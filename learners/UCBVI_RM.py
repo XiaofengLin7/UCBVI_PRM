@@ -20,6 +20,7 @@ class UCBVI_PRM:
         self.P = np.zeros((self.nQ, nO, nA, self.nQ, nO))
         self.R = np.zeros((self.nQ, nO, nA))
 
+        np.random.seed(42)
     def name(self):
         return 'UCBVI_PRM'
 
@@ -76,21 +77,14 @@ class UCBVI_PRM:
         return var_W
 
     def calculate_PV(self, V, h, q, o, a):
-        # return PV_h(s, a) = \sum_{s'} P(s'|s, a) V_h(s')
-        ret = 0.0
-        for next_q in range(self.nQ):
-            for next_o in range(self.nO):
-                ret += self.P[q, o, a, next_q, next_o]*V[h, next_q, next_o]
 
-        return ret
+        return np.sum(self.P[q, o, a, :, :]*V[h, :, :])
 
     def update_transition_prob_obs(self):
         for o in range(self.nO):
             for a in range(self.nA):
                 if self.N[o, a] > 0:
-                    for z in range(self.nO):
-                        #pdb.set_trace()
-                        self.p[o, a, z] = self.N_oaz[o, a, z] / (self.N[o, a])
+                    self.p[o, a, :] = self.N_oaz[o, a, :] / (self.N[o, a])
 
     def update_transition_prob_state(self):
         for q in range(self.nQ):
@@ -111,10 +105,10 @@ class UCBVI_PRM:
         for q in range(self.nQ):
             for o in range(self.nO):
                 for a in range(self.nA):
-                    self.R[q, o, a] = 0.0
-                    for z in range(self.nO):
-                        for next_q in range(self.nQ):
-                            self.R[q, o, a] += self.P[q, o, a, next_q, z]*self.RM.rewards[q, next_q]
+                    self.R[q, o, a] = np.sum(self.P[q, o, a, :, :] * (self.RM.rewards[q, :].reshape(self.nQ, 1)))
+
+                    #if self.R[q, o, a] != np.sum(self.P[q, o, a, :, :] * (self.RM.rewards[q, :].reshape(self.nQ, 1))):
+                    #    pdb.set_trace()
 
 
     def update_Q(self):

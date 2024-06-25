@@ -10,15 +10,17 @@ import os
 import csv
 
 def run_exp(test_name = "river_swim_patrol"):
-    epi_len = 15
-    num_epi = 10000
-    num_states = 5
     save_data = False
+
+    epi_len = 15
+    num_epi = 2000
+    num_states = 7
+
     env, n_states, n_actions = buildRiverSwim_patrol2(nbStates=num_states, rightProbaright=0.6, rightProbaLeft=0.05, rewardL=0.005,
                                                rewardR=1.)
-    #learner = UCBVI_RM(n_states, n_actions, epi_len, delta = 0.05, K = num_epi, RM=env.rewardMachine)
-    nQ = env.rewardMachine.n_states
-    learner = UCBVI_CP(nQ, n_states, n_actions, epi_len, delta = 0.05, K = num_epi, rm_rewards=env.rewardMachine.rewards)
+    learner = UCBVI_RM(n_states, n_actions, epi_len, delta = 0.05, K = num_epi, RM=env.rewardMachine)
+    #nQ = env.rewardMachine.n_states
+    #learner = UCBVI_CP(nQ, n_states, n_actions, epi_len, delta = 0.05, K = num_epi, rm_rewards=env.rewardMachine.rewards)
     cumulative_reward = cumulative_rewards(env, learner, len_horizon=epi_len)
 
     reward_per_episode = [total_reward[-1] for total_reward in cumulative_reward]

@@ -83,7 +83,6 @@ def cumulative_rewards(env, learner, len_horizon):
 
 if __name__ == '__main__':
 
-    generator,_ = seeding.np_random(42)
-    for t in range(10):
-        i = categorical_sample([0.2, 0.2, 0.3, 0.3], generator)
-        print(i)
+    generator,seed = seeding.np_random(42)
+    print(type(generator))
+    print(seed)
