@@ -13,7 +13,7 @@ class UCBVI_PRM:
         self.N_oaz = np.zeros((nO, nA, nO))
         self.N = np.zeros((nO, nA))
         self.N_h = np.zeros((epi_len, nO))
-        self.observations_buffer = [[],[],[],[]]
+        self.observations_buffer = [[], [], [], []]
         self.RM = PRM
         self.nQ = PRM.n_states
         self.Q = np.zeros((epi_len, self.nQ, nO, nA))
@@ -25,6 +25,25 @@ class UCBVI_PRM:
 
     def reset(self, initial_obs):
         self.observations_buffer = [[initial_obs],[],[],[0]]
+
+    def update(self, rm_state, action, reward, observation, time):
+
+        self.observations_buffer[0].append(observation)
+        self.observations_buffer[1].append(action)
+        self.observations_buffer[2].append(reward)
+        self.observations_buffer[3].append(time)
+        self.update_N()
+
+    def update_N(self):
+        self.N_oaz[self.observations_buffer[0][-2], self.observations_buffer[1][-1], self.observations_buffer[0][-1]] += 1
+        self.N_h[self.observations_buffer[3][-1], self.observations_buffer[0][-1]] += 1
+        self.N[self.observations_buffer[0][-2], self.observations_buffer[1][-1]] += 1
+
+    def learn(self):
+        self.update_transition_prob_obs()
+        self.update_transition_prob_state()
+        self.update_rewards()
+        self.update_Q()
 
     def bonus(self, h, q, o, a, V):
         T = self.K * self.epi_len
@@ -96,23 +115,7 @@ class UCBVI_PRM:
                     for z in range(self.nO):
                         for next_q in range(self.nQ):
                             self.R[q, o, a] += self.P[q, o, a, next_q, z]*self.RM.rewards[q, next_q]
-    def update_N(self):
-        self.N_oaz[self.observations_buffer[0][-2], self.observations_buffer[1][-1], self.observations_buffer[0][-1]] += 1
-        self.N_h[self.observations_buffer[3][-1], self.observations_buffer[0][-1]] += 1
-        self.N[self.observations_buffer[0][-2], self.observations_buffer[1][-1]] += 1
-    def update(self, state, action, reward, observation, time):
 
-        self.observations_buffer[0].append(observation)
-        self.observations_buffer[1].append(action)
-        self.observations_buffer[2].append(reward)
-        self.observations_buffer[3].append(time)
-        self.update_N()
-
-    def learn(self):
-        self.update_transition_prob_obs()
-        self.update_transition_prob_state()
-        self.update_rewards()
-        self.update_Q()
 
     def update_Q(self):
         V = np.zeros((self.epi_len, self.nQ, self.nO))

@@ -23,6 +23,7 @@ def calculate_variance(prob_n: np.array, x: np.array) -> float:
     :return: variance
     """
     if abs(np.sum(prob_n) - 1) > 1e-5:
+        pdb.set_trace()
         raise ValueError("Sum of probabilities is not 1")
     e_x = np.sum(np.multiply(prob_n, x))
     e_xx = np.sum(np.multiply(np.multiply(prob_n, x), x))
@@ -67,7 +68,7 @@ def cumulative_rewards(env, learner, len_horizon):
             action = learner.play(t, cur_Q, cur_obs)
 
             observation, reward, done, info = env.step(action)
-            learner.update(state, action, reward, observation, t)
+            learner.update(cur_Q, action, reward, observation, t)
             cur_epi_cum_rewards += reward
             cur_epi_rewards.append(cur_epi_cum_rewards)
             #if env.rewardMachine.current_state == 1:
