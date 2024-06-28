@@ -53,7 +53,7 @@ def buildRiverSwim_patrol2(nbStates=5, max_steps=np.infty,reward_threshold=np.in
 
     return gym.make('RiverSwim_patrol2-v0'), nbStates, 2
 
-def cumulative_rewards(env, learner, len_horizon):
+def cumulative_rewards_v1(env, learner, len_horizon):
     cumulative_rewards = []
     learner.update_Q()
     for k in tqdm(range(learner.K)):
@@ -78,6 +78,34 @@ def cumulative_rewards(env, learner, len_horizon):
         #print("Episode {}: cumulative reward is {}".format(k+1, cur_epi_cum_rewards))
         cumulative_rewards.append(cur_epi_rewards)
         learner.learn()
+    #pdb.set_trace()
+    return cumulative_rewards
+
+
+
+def cumulative_rewards_v2(env, learner, len_horizon):
+    """
+    util functions specifically for UCRL2 type of learning algorithms
+    """
+    cumulative_rewards = []
+    for k in tqdm(range(learner.K)):
+        observation = env.reset()
+        learner.reset(observation)
+        cur_epi_rewards = []
+        cur_epi_cum_rewards = 0.0
+        for t in range(len_horizon):
+            cur_obs = observation
+            cur_Q = env.rewardMachine.current_state
+            state = (cur_Q, cur_obs)
+            action = learner.play(t, cur_Q, cur_obs)
+
+            observation, reward, done, info = env.step(action)
+            learner.update(cur_Q, action, reward, observation, t)
+            cur_epi_cum_rewards += reward
+            cur_epi_rewards.append(cur_epi_cum_rewards)
+
+        cumulative_rewards.append(cur_epi_rewards)
+
     #pdb.set_trace()
     return cumulative_rewards
 

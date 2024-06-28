@@ -22,7 +22,7 @@ class UCBVI_CP():
 
         self.initial_q = 0
         self.rm_rewards = rm_rewards
-        
+
         np.random.seed(42)
     def name(self):
         return "UCBVI_CP"

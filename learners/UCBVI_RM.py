@@ -48,7 +48,7 @@ class UCBVI_PRM:
 
     def bonus(self, h, q, o, a, V):
         T = self.K * self.epi_len
-        L = np.log(6*self.nQ*self.nO*self.nA*T/self.delta)
+        L = np.log(6*self.nA*T/self.delta)
         var_W = self.calculate_var_W(V, h+1, q, o, a)
         temp = 0.0
         for z in range(self.nO):
@@ -124,7 +124,8 @@ class UCBVI_PRM:
                             self.Q[h, q, o, a] = min(min(self.Q[h, q, o, a], self.epi_len), self.R[q, o, a] + PV + bonus)
                         else:
                             self.Q[h, q, o, a] = self.epi_len
-                    V[h, q, o] = max(self.Q[h, q, o, a] for a in range(self.nA))
+
+                    V[h, q, o] = np.max(self.Q[h, q, o, :])
 
     def play(self, h, q, o):
         max_Q = np.max(self.Q[h, q, o, :])
