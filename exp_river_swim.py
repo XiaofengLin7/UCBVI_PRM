@@ -1,5 +1,4 @@
-
-from utils import buildRiverSwim_patrol2, cumulative_rewards_v1, cumulative_rewards_v2
+from utils import buildRiverSwim_patrol2, buildFlower, cumulative_rewards_v1, cumulative_rewards_v2
 from tqdm import tqdm
 import time
 import pdb
@@ -10,35 +9,40 @@ import matplotlib.pyplot as plt
 import os
 import csv
 
-def run_exp(test_name = "river_swim_patrol"):
+
+def run_exp(test_name="river_swim_patrol"):
     save_data = False
 
     epi_len = 10
-    num_epi = 50000
-    num_states = 7
+    num_epi = 20000
+    num_states = 10
 
-    env, n_states, n_actions = buildRiverSwim_patrol2(nbStates=num_states, rightProbaright=0.5, rightProbaLeft=0.45, rewardL=0.005,
-                                               rewardR=1.)
-    learner_1 = UCBVI_RM(n_states, n_actions, epi_len, delta = 0.05, K = num_epi, RM=env.rewardMachine)
-    #nQ = env.rewardMachine.n_states
-    #learner = UCBVI_CP(nQ, n_states, n_actions, epi_len, delta = 0.05, K = num_epi, rm_rewards=env.rewardMachine.rewards)
-    #learner = UCRL2_RM(n_states, n_actions, epi_len, delta = 0.05, K = num_epi, RM=env.rewardMachine)
+    #env, n_states, n_actions = buildRiverSwim_patrol2(nbStates=num_states, rightProbaright=0.6, rightProbaLeft=0.05,
+    #                                                  rewardL=0.005,
+    #                                                  rewardR=1.)
+    env, n_states, n_actions = buildFlower(sizeB = 5, delta = 0.2)
+    learner_1 = UCBVI_RM(n_states, n_actions, epi_len, delta=0.05, K=num_epi, RM=env.rewardMachine)
+    # nQ = env.rewardMachine.n_states
+    # learner = UCBVI_CP(nQ, n_states, n_actions, epi_len, delta = 0.05, K = num_epi, rm_rewards=env.rewardMachine.rewards)
+    # learner = UCRL2_RM(n_states, n_actions, epi_len, delta = 0.05, K = num_epi, RM=env.rewardMachine)
     chunk_size = 500
 
     cumulative_reward_1 = cumulative_rewards_v1(env, learner_1, len_horizon=epi_len)
     reward_per_episode_1 = [total_reward[-1] for total_reward in cumulative_reward_1]
 
-    total_reward_per_chunk_1 = [sum(reward_per_episode_1[i: i + chunk_size]) for i in range(0, len(reward_per_episode_1),
-                                                                                         chunk_size)]
+    total_reward_per_chunk_1 = [sum(reward_per_episode_1[i: i + chunk_size]) for i in
+                                range(0, len(reward_per_episode_1),
+                                      chunk_size)]
     learner_2 = UCRL2_RM(n_states, n_actions, epi_len, delta=0.05, K=num_epi, RM=env.rewardMachine)
     cumulative_reward_2 = cumulative_rewards_v2(env, learner_2, len_horizon=epi_len)
     reward_per_episode_2 = [total_reward[-1] for total_reward in cumulative_reward_2]
     total_reward_per_chunk_2 = [sum(reward_per_episode_2[i: i + chunk_size]) for i in
-                                range(0, len(reward_per_episode_2),chunk_size)]
+                                range(0, len(reward_per_episode_2), chunk_size)]
 
-    plt.plot(total_reward_per_chunk_1,  marker='o', linestyle='-', color='b')
-    plt.plot(total_reward_per_chunk_2, marker='o', linestyle='-', color='r')
-    plt.title("{num_episodes} episodes {epi_len} horizon {num_states} states")
+    plt.plot(total_reward_per_chunk_1, marker='o', linestyle='-', color='b', label=learner_1.name())
+    plt.plot(total_reward_per_chunk_2, marker='o', linestyle='-', color='r', label=learner_2.name())
+    #plt.title(f"{num_epi} episodes {epi_len} horizon {num_states} states")
+    plt.legend()
     plt.show()
 
     # if data is requested to be saved:
@@ -54,9 +58,11 @@ def run_exp(test_name = "river_swim_patrol"):
             writer.writerow(['Rewards'])  # Write a header
             for reward in cumulative_reward:
                 writer.writerow([reward])
-    #print(len(cumulative_reward))
-    #print(type(cumulative_reward))
+    # print(len(cumulative_reward))
+    # print(type(cumulative_reward))
 
-    #pdb.set_trace()
+    # pdb.set_trace()
+
+
 if __name__ == "__main__":
-    run_exp(test_name = "river_swim_patrol")
+    run_exp(test_name="river_swim_patrol")

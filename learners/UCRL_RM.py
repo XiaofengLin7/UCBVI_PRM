@@ -79,7 +79,8 @@ class UCRL2_RM:
         if h < self.epi_len - 1:
             if event is not None:
                 next_q = self.RM.transitions[cur_q, event]
-                u[:] = u0[h + 1, next_q, :] + self.RM.rewards[cur_q, next_q]
+                #u[:] = u0[h + 1, next_q, :] + self.RM.rewards[cur_q, next_q]
+                u[:] = u0[h + 1, next_q, :] + self.RM.rewards[cur_q, event]
             else:
                 u[:] = u0[h + 1, cur_q, :]
         else:
@@ -120,7 +121,8 @@ class UCRL2_RM:
                                 event = self.RM.events[o, a]
                                 if event is not None:
                                     next_q = self.RM.transitions[q, event]
-                                    reward = self.RM.rewards[q, next_q]
+                                    #reward = self.RM.rewards[q, next_q]
+                                    reward = self.RM.rewards[q, event]
                                 else:
                                     next_q = q
                                     reward = 0

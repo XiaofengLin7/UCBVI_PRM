@@ -105,8 +105,10 @@ class UCBVI_PRM:
         for q in range(self.nQ):
             for o in range(self.nO):
                 for a in range(self.nA):
-                    self.R[q, o, a] = np.sum(self.P[q, o, a, :, :] * (self.RM.rewards[q, :].reshape(self.nQ, 1)))
-
+                    #self.R[q, o, a] = np.sum(self.P[q, o, a, :, :] * (self.RM.rewards[q, :].reshape(self.nQ, 1)))
+                    event = self.RM.events[o, a]
+                    if event is not None:
+                        self.R[q, o, a] = self.RM.rewards[q, event]
                     #if self.R[q, o, a] != np.sum(self.P[q, o, a, :, :] * (self.RM.rewards[q, :].reshape(self.nQ, 1))):
                     #    pdb.set_trace()
 
