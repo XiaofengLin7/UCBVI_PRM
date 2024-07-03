@@ -25,7 +25,7 @@ class DiscreteMDP(Env):
         self.observation_space = spaces.Discrete(self.nS)
 
         self.initializedRender = False
-        self.seed(42)
+        self.seed()
         self.reset()
 
     def seed(self, seed=None):

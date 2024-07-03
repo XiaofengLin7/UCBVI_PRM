@@ -19,8 +19,9 @@ class UCBVI_PRM:
         self.Q = np.zeros((epi_len, self.nQ, nO, nA))
         self.P = np.zeros((self.nQ, nO, nA, self.nQ, nO))
         self.R = np.zeros((self.nQ, nO, nA))
+        self.policy = np.zeros((self.epi_len, self.nQ, self.nO,), dtype=int)
 
-        np.random.seed(42)
+        #np.random.seed(42)
     def name(self):
         return 'UCBVI_PRM'
 
@@ -52,13 +53,13 @@ class UCBVI_PRM:
         var_W = self.calculate_var_W(V, h+1, q, o, a)
         temp = 0.0
         for z in range(self.nO):
-            if self.N_h[h+1, z] > 0:
+            if h < self.epi_len-1 and self.N_h[h+1, z] > 0:
                 regret_state = 10000 * (self.epi_len**3) * (self.nO**2) * self.nA * (L**2) / self.N_h[h+1, z]
                 temp += self.p[o, a, z] * min(self.epi_len**2, regret_state)
             else:
                 temp += self.p[o, a, z] * self.epi_len**2
 
-        bonus = np.sqrt(8*L*var_W/self.N[o, a]) + np.sqrt(2*L/self.N[o, a]) + 14*self.epi_len/(3*self.N[o, a]) + np.sqrt(8*temp/self.N[o, a])
+        bonus = np.sqrt(8*L*var_W/self.N[o, a]) + 14*self.epi_len/(3*self.N[o, a]) + np.sqrt(8*temp/self.N[o, a]) + np.sqrt(2*L/self.N[o, a])
         return bonus
 
     def calculate_var_W(self, V, h, q, o, a):
@@ -76,9 +77,6 @@ class UCBVI_PRM:
         var_W = calculate_variance(self.p[o, a, :], W_h)
         return var_W
 
-    def calculate_PV(self, V, h, q, o, a):
-
-        return np.sum(self.P[q, o, a, :, :]*V[h, :, :])
 
     def update_transition_prob_obs(self):
         for o in range(self.nO):
@@ -114,19 +112,19 @@ class UCBVI_PRM:
 
 
     def update_Q(self):
-        V = np.zeros((self.epi_len, self.nQ, self.nO))
-        # V_H = 0 for all s
-        for h in range(self.epi_len-2, -1, -1):
+        V = np.zeros((self.epi_len+1, self.nQ, self.nO))
+        # V_{H+1} = 0 for all s
+        for h in range(self.epi_len-1, -1, -1):
             for q in range(self.nQ):
                 for o in range(self.nO):
                     for a in range(self.nA):
                         if self.N[o, a] > 0:
                             bonus = self.bonus(h, q, o, a, V)
-                            PV = self.calculate_PV(V, h+1, q, o, a)
+                            #PV = self.calculate_PV(V, h+1, q, o, a)
+                            PV = np.sum(self.P[q, o, a, :, :] * V[h+1, :, :])
                             self.Q[h, q, o, a] = min(min(self.Q[h, q, o, a], self.epi_len), self.R[q, o, a] + PV + bonus)
                         else:
                             self.Q[h, q, o, a] = self.epi_len
-
                     V[h, q, o] = np.max(self.Q[h, q, o, :])
 
     def play(self, h, q, o):
@@ -134,8 +132,12 @@ class UCBVI_PRM:
         max_actions = np.where(self.Q[h, q, o, :] == max_Q)
 
         action = np.random.choice(max_actions[0])
+        self.policy[h, q, o] = action
 
         return action
+
+    def get_policy(self):
+        return self.policy
 
 
 class UCBVI_RM(UCBVI_PRM):

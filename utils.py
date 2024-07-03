@@ -47,26 +47,26 @@ def clip(x, range):
 
 
 def buildRiverSwim_patrol2(nbStates=5, max_steps=np.infty, reward_threshold=np.infty, rightProbaright=0.6,
-                           rightProbaLeft=0.05, rewardL=0.1, rewardR=1.):
+                           rightProbaLeft=0.05, rewardL=0.1, rewardR=1., epi_len=10):
     register(
         id='RiverSwim_patrol2-v0',
         entry_point='environments.MDPRM_library:RiverSwim_patrol2',
         max_episode_steps=max_steps,
         reward_threshold=reward_threshold,
         kwargs={'nbStates': nbStates, 'rightProbaright': rightProbaright, 'rightProbaLeft': rightProbaLeft,
-                'rewardL': rewardL, 'rewardR': rewardR, }
+                'rewardL': rewardL, 'rewardR': rewardR, 'epi_len': epi_len}
     )
 
     return gym.make('RiverSwim_patrol2-v0'), nbStates, 2
 
 
-def buildFlower(sizeB, delta, max_steps=np.infty, reward_threshold=np.infty):
+def buildFlower(sizeB, delta, epi_len, max_steps=np.infty, reward_threshold=np.infty):
     register(
         id='Flower_' + str(sizeB) + '-v0',
         entry_point='environments.MDPRM_library:Flower',
         max_episode_steps=max_steps,
         reward_threshold=reward_threshold,
-        kwargs={'sizeB': sizeB, 'delta': delta, }
+        kwargs={'sizeB': sizeB, 'delta': delta, 'epi_len': epi_len}
     )
     name = 'Flower_' + str(sizeB) + '-v0'
     return gym.make(name), 6, 2

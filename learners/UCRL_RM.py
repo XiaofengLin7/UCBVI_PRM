@@ -25,7 +25,7 @@ class UCRL2_RM:
         self.init_q = RM.init
         self.init_o = 0
 
-        np.random.seed(42)
+        #np.random.seed(42)
 
     def name(self):
         return "UCRL2_RM"
@@ -56,8 +56,8 @@ class UCRL2_RM:
                 div = max(1, self.Nk[o, a])
                 for next_o in range(self.nO):
                     p_estimates[o, a, next_o] += self.Pk[o, a, next_o] / div
-                    if np.sum(p_estimates[o, a, :]) > 1+1e-2:
-                        print("update rules are wrong")
+                #if abs(np.sum(p_estimates[o, a, :]) - 1) > 1e-2:
+                #    print("update rules are wrong")
 
         self.distances()
 
@@ -80,7 +80,7 @@ class UCRL2_RM:
             if event is not None:
                 next_q = self.RM.transitions[cur_q, event]
                 #u[:] = u0[h + 1, next_q, :] + self.RM.rewards[cur_q, next_q]
-                u[:] = u0[h + 1, next_q, :] + self.RM.rewards[cur_q, event]
+                u[:] = u0[h + 1, next_q, :]
             else:
                 u[:] = u0[h + 1, cur_q, :]
         else:
@@ -116,6 +116,7 @@ class UCRL2_RM:
                 if h < self.epi_len-1:
                     for q in range(self.nQ):
                         for o in range(self.nO):
+                            temp = np.zeros(self.nA)
                             for a in range(self.nA):
                                 max_p = self.max_proba(p_estimate, self.sorted_indices(u0, h, q, o, a), o, a)
                                 event = self.RM.events[o, a]
@@ -126,16 +127,31 @@ class UCRL2_RM:
                                 else:
                                     next_q = q
                                     reward = 0
-                                temp = reward + np.sum(max_p * u0[h+1, next_q, :])
-                                # get argmax a
-                                if (a == 0) or (temp > u1[h, q, o]):
-                                    #pdb.set_trace()
-                                    u1[h, q, o] = temp
-                                    self.policy[h, q, o] = a
+                                temp[a] = reward + np.sum(max_p * u0[h+1, next_q, :])
+                            # get argmax a
+                            u1[h, q, o] = np.max(temp)
+                            max_u = np.max(temp)
+                            max_actions = np.where(temp == max_u)
+                            action = np.random.choice(max_actions[0])
+                            self.policy[h, q, o] = action
                 else:
-                    u1[h, :, :] = u0[0, self.init_q, self.init_o]
-                    #u1[h, :, :] = 0
-                    self.policy[h, :, :] = 0
+                    #TODO: +reward?
+                    for q in range(self.nQ):
+                        for o in range(self.nO):
+                            temp = np.zeros(self.nA)
+                            for a in range(self.nA):
+                                event = self.RM.events[o, a]
+                                if event is not None:
+                                    reward = self.RM.rewards[q, event]
+                                else:
+                                    reward = 0
+                                temp[a] = reward + u0[0, self.init_q, self.init_o]
+                            u1[h, q, o] = np.max(temp)
+                            max_u = np.max(temp)
+                            max_actions = np.where(temp == max_u)
+                            action = np.random.choice(max_actions[0])
+                            self.policy[h, q, o] = action
+
                 diff = np.abs(u1[h, :, :] - u0[h, :, :])
                 if ((np.max(diff) - np.min(diff)) >= epsilon and n < max_iter) or n < 2:
                     stop = False
@@ -164,3 +180,6 @@ class UCRL2_RM:
             self.observations[2].append(reward)
             self.updateP()
         self.t += 1
+
+    def get_policy(self):
+        return self.policy

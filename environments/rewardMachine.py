@@ -19,8 +19,7 @@ class RewardMachine:
         if event != None:
             old_state = self.current_state
             self.current_state = self.transitions[self.current_state, event]
-            #reward = self.rewards[old_state, event]
-            reward = self.rewards[old_state, self.current_state]
+            reward = self.rewards[old_state, event]
         return reward
 
     def reset(self):
