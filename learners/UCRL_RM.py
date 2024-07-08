@@ -181,5 +181,8 @@ class UCRL2_RM:
             self.updateP()
         self.t += 1
 
+    def learn(self):
+        pass
+
     def get_policy(self):
         return self.policy

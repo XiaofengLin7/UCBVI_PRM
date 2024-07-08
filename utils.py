@@ -14,10 +14,12 @@ def categorical_sample(prob_n, np_random):
     Return: sampled index
     """
 
+    # prob_n = np.asarray(prob_n)
+    # csprob_n = np.cumsum(prob_n)
+    # return (csprob_n > np_random.rand()).argmax()
     prob_n = np.asarray(prob_n)
-    csprob_n = np.cumsum(prob_n)
-    return (csprob_n > np_random.rand()).argmax()
-
+    k = np.arange(len(prob_n))
+    return np.random.choice(k, p=prob_n)
 
 def calculate_variance(prob_n: np.array, x: np.array) -> float:
     """
@@ -45,7 +47,45 @@ def clip(x, range):
     """
     return max(min(x, range[1]), range[0])
 
+def calculate_cumu_reward_mean_std(all_reward_episodes_runs):
+    """
+    input: all_reward_episodes_runs: n_runs x n_episodes x epi_len
+    output: mean_cumu_reward: averaged cumulative reward across runs
+            std: corresponding standard deviation
+    """
+    reward_per_episode = all_reward_episodes_runs[:, :, -1]
+    cumu_rewards = np.cumsum(reward_per_episode, axis=1)
+    std = np.std(cumu_rewards, axis=0)
+    mean_cumu_reward = np.mean(cumu_rewards, axis=0)
 
+    return mean_cumu_reward, std
+
+def value_iteration(P, R, epi_len):
+    """
+    :param P: nQ x nO x nA x nQ x nO
+    :param R: nQ x nO x nA
+    :param epi_len: H
+    :return: V, Q
+    """
+    nQ = R.shape[0]
+    nO = R.shape[1]
+    nA = R.shape[2]
+    V = np.zeros((epi_len+1, nQ, nO), dtype=np.float64)
+    Q = np.zeros((epi_len, nQ, nO, nA), dtype=np.float64)
+    policy = np.zeros((epi_len, nQ, nO), dtype=int)
+    for h in range(epi_len - 1, -1, -1):
+        for q in range(nQ):
+            for o in range(nO):
+                for a in range(nA):
+                    PV = np.sum(P[q, o, a, :, :] * V[h + 1, :, :])
+                    Q[h, q, o, a] = PV + R[q, o, a]
+                V[h, q, o] = np.max(Q[h, q, o, :])
+                action_value = Q[h, q, o, :]
+                action = np.random.choice(np.where(action_value == action_value.max())[0])
+                # policy[h, q, o] = np.argmax(Q[h, q, o, :])
+                policy[h, q, o] = action
+
+    return Q, V, policy
 def buildRiverSwim_patrol2(nbStates=5, max_steps=np.infty, reward_threshold=np.infty, rightProbaright=0.6,
                            rightProbaLeft=0.05, rewardL=0.1, rewardR=1., epi_len=10):
     register(
@@ -74,8 +114,10 @@ def buildFlower(sizeB, delta, epi_len, max_steps=np.infty, reward_threshold=np.i
 
 def cumulative_rewards_v1(env, learner, len_horizon):
     cumulative_rewards = []
-    learner.update_Q()
-    for k in tqdm(range(learner.K)):
+
+    for k in tqdm(range(learner.K), desc=learner.name()):
+        # np.random.seed(42)
+        learner.learn()
         observation = env.reset()
         learner.reset(observation)
         cur_epi_rewards = []
@@ -85,18 +127,23 @@ def cumulative_rewards_v1(env, learner, len_horizon):
             cur_Q = env.rewardMachine.current_state
             state = (cur_Q, cur_obs)
             action = learner.play(t, cur_Q, cur_obs)
-
+            # if cur_obs == 0 and action == 0:
+            #     print("debug")
             observation, reward, done, info = env.step(action)
+            # if reward == 1:
+            #     print("debug")
+            cur_Q = env.rewardMachine.current_state
             learner.update(cur_Q, action, reward, observation, t)
             cur_epi_cum_rewards += reward
             cur_epi_rewards.append(cur_epi_cum_rewards)
+
             # if env.rewardMachine.current_state == 1:
             # pdb.set_trace()
             #    pass
 
         # print("Episode {}: cumulative reward is {}".format(k+1, cur_epi_cum_rewards))
         cumulative_rewards.append(cur_epi_rewards)
-        learner.learn()
+        # learner.learn()
     # pdb.set_trace()
     return cumulative_rewards
 

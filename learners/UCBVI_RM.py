@@ -1,6 +1,8 @@
 import numpy as np
 from utils import calculate_variance
 import pdb
+
+
 class UCBVI_PRM:
     def __init__(self, nO, nA, epi_len, delta, K, PRM):
         self.nO = nO
@@ -26,7 +28,7 @@ class UCBVI_PRM:
         return 'UCBVI_PRM'
 
     def reset(self, initial_obs):
-        self.observations_buffer = [[initial_obs],[],[],[0]]
+        self.observations_buffer = [[initial_obs], [], [], [0]]
 
     def update(self, rm_state, action, reward, observation, time):
 
@@ -49,17 +51,22 @@ class UCBVI_PRM:
 
     def bonus(self, h, q, o, a, V):
         T = self.K * self.epi_len
-        L = np.log(6*self.nA*T/self.delta)
+        L = np.log(6*self.nO*self.nA*T/self.delta)
         var_W = self.calculate_var_W(V, h+1, q, o, a)
         temp = 0.0
         for z in range(self.nO):
             if h < self.epi_len-1 and self.N_h[h+1, z] > 0:
                 regret_state = 10000 * (self.epi_len**3) * (self.nO**2) * self.nA * (L**2) / self.N_h[h+1, z]
+                if regret_state < self.epi_len**2:
+                    # print("debug")
+                    pass
                 temp += self.p[o, a, z] * min(self.epi_len**2, regret_state)
             else:
                 temp += self.p[o, a, z] * self.epi_len**2
 
-        bonus = np.sqrt(8*L*var_W/self.N[o, a]) + 14*self.epi_len/(3*self.N[o, a]) + np.sqrt(8*temp/self.N[o, a]) + np.sqrt(2*L/self.N[o, a])
+        bonus = np.sqrt(8*L*var_W/self.N[o, a]) + 14*self.epi_len/(3*self.N[o, a]) + np.sqrt(8*temp/self.N[o, a]) #+ np.sqrt(2*L/self.N[o, a])
+        # if bonus < 1:
+            # print("debug")
         return bonus
 
     def calculate_var_W(self, V, h, q, o, a):
@@ -119,7 +126,8 @@ class UCBVI_PRM:
                 for o in range(self.nO):
                     for a in range(self.nA):
                         if self.N[o, a] > 0:
-                            bonus = self.bonus(h, q, o, a, V)
+                            bonus = self.bonus(h, q, o, a, V)*0.1
+                            # bonus = 0.01
                             #PV = self.calculate_PV(V, h+1, q, o, a)
                             PV = np.sum(self.P[q, o, a, :, :] * V[h+1, :, :])
                             self.Q[h, q, o, a] = min(min(self.Q[h, q, o, a], self.epi_len), self.R[q, o, a] + PV + bonus)
@@ -133,8 +141,9 @@ class UCBVI_PRM:
 
         action = np.random.choice(max_actions[0])
         self.policy[h, q, o] = action
+        # self.policy[h, q, o] = np.argmax(self.Q[h, q, o, :])
 
-        return action
+        return self.policy[h, q, o]
 
     def get_policy(self):
         return self.policy
@@ -176,6 +185,5 @@ class UCBVI_RM(UCBVI_PRM):
                 # not defined event, q stays the same
                 W_h[z] += V[h, q, z]
 
-        # to do: check compatibility in dimensions
         var_W = calculate_variance(self.p[o, a, :], W_h)
         return var_W

@@ -16,24 +16,26 @@ class RewardMachine:
     def next_step(self, event):
         reward = 0
         self.previous_state = self.current_state
-        if event != None:
+        if event is not None:
             old_state = self.current_state
             self.current_state = self.transitions[self.current_state, event]
             reward = self.rewards[old_state, event]
+            # if reward == 1:
+            #     print("stop")
         return reward
 
     def reset(self):
         self.previous_state = self.current_state
         self.current_state = self.init
 class RewardMachine2(RewardMachine):
-    def __init__(self, Events, Transitions, Rewards, init = 0, np_random = None):
+    def __init__(self, Events, Transitions, Rewards, init=0, np_random = None):
         super().__init__(Events, Transitions, Rewards, init)
         self.np_random = np_random
 
     def next_step(self, event):
         reward = 0
         self.previous_state = self.current_state
-        if event != None:
+        if event is not None:
             old_state = self.current_state
             self.current_state = self.transitions[self.current_state, event]
             reward = self.rewards[old_state, event]

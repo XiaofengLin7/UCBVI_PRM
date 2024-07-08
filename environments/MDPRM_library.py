@@ -3,7 +3,7 @@ import numpy as np
 from utils import *
 from environments.discreteMDP import DiscreteMDP
 from environments.rewardMachine import RewardMachine, RewardMachine2
-
+from gym.utils import seeding
 import scipy.stats as stat
 import pdb
 
@@ -44,93 +44,88 @@ class RiverSwim_patrol2(DiscreteMDP):
         self.startdistribution[0] = 1.
         self.rewards = {}
         self.P = {}
+        self.o = 0
         self.transitions = {}
         self.epi_len = epi_len
         # Initialize a randomly generated MDP
-        for s in self.states:
-            self.P[s] = {}
-            self.transitions[s] = {}
+        for o in self.states:
+            self.P[o] = {}
+            self.transitions[o] = {}
             # GOING RIGHT
-            self.transitions[s][0] = {}
-            self.P[s][0] = []  # 0=right", 1=left
-            li = self.P[s][0]
+            self.transitions[o][0] = {}
+            self.P[o][0] = []  # 0=right", 1=left
+            li = self.P[o][0]
             prr = 0.
-            if (s < self.nO - 1) and (s > 0):
-                li.append((rightProbaright, s + 1, False))
-                self.transitions[s][0][s + 1] = rightProbaright
+            if (o < self.nO - 1) and (o > 0):
+                li.append((rightProbaright, o + 1, False))
+                self.transitions[o][0][o + 1] = rightProbaright
                 prr = rightProbaright
-            elif (s == 0):  # To have 0.6 on the leftmost state
-                li.append((0.6, s + 1, False))
-                self.transitions[s][0][s + 1] = 0.6
+            elif (o == 0):  # To have 0.6 on the leftmost state
+                li.append((0.6, o + 1, False))
+                self.transitions[o][0][o + 1] = 0.6
                 prr = 0.6
             prl = 0.
-            if (s > 0) and (s < self.nO - 1):  # MODIFY HERE FOR THE RIGTHMOST 0.95 and leftmost 0.35
-                li.append((rightProbaLeft, s - 1, False))
-                self.transitions[s][0][s - 1] = rightProbaLeft
+            if (o > 0) and (o < self.nO - 1):  # MODIFY HERE FOR THE RIGTHMOST 0.95 and leftmost 0.35
+                li.append((rightProbaLeft, o - 1, False))
+                self.transitions[o][0][o - 1] = rightProbaLeft
                 prl = rightProbaLeft
-            elif s == self.nO - 1:  # To have 0.6 and 0.4 on rightmost state
-                li.append((0.4, s - 1, False))
-                self.transitions[s][0][s - 1] = 0.4
+            elif o == self.nO - 1:  # To have 0.6 and 0.4 on rightmost state
+                li.append((0.4, o - 1, False))
+                self.transitions[o][0][o - 1] = 0.4
                 prl = 0.4
-            li.append((1. - prr - prl, s, False))
-            self.transitions[s][0][s] = 1. - prr - prl
+            li.append((1. - prr - prl, o, False))
+            self.transitions[o][0][o] = 1. - prr - prl
 
             # GOING LEFT
             # if ergodic:
             #	pll = 0.95
             # else:
             #	pll = 1
-            self.P[s][1] = []  # 0=right", 1=left
-            self.transitions[s][1] = {}
-            li = self.P[s][1]
-            if (s > 0):
-                li.append((1., s - 1, False))
-                self.transitions[s][1][s - 1] = 1.
+            self.P[o][1] = []  # 0=right", 1=left
+            self.transitions[o][1] = {}
+            li = self.P[o][1]
+            if (o > 0):
+                li.append((1., o - 1, False))
+                self.transitions[o][1][o - 1] = 1.
             else:
-                li.append((1., s, False))
-                self.transitions[s][1][s] = 1.
-
-            self.rewards[s] = {}
-            if (s == self.nO - 1):
-                self.rewards[s][0] = stat.norm(loc=rewardR, scale=0.)
-            else:
-                self.rewards[s][0] = stat.norm(loc=0., scale=0.)
-            if (s == 0):
-                self.rewards[s][1] = stat.norm(loc=rewardL, scale=0.)
-            else:
-                self.rewards[s][1] = stat.norm(loc=0., scale=0.)
-
-        # print("Rewards : ", self.rewards, "\nTransitions : ", self.transitions)
+                li.append((1., o, False))
+                self.transitions[o][1][o] = 1.
 
         e, t, r = RM_riverSwim_patrol2(nbStates)
         self.rewardMachine = RewardMachine(e, t, r)
         self.Q_star = np.zeros((self.epi_len, self.rewardMachine.n_states, self.nO, self.nA), dtype=np.float64)
         self.V_star = np.zeros((self.epi_len+1, self.rewardMachine.n_states, self.nO), dtype=np.float64)
         self.optimal_policy = np.zeros((self.epi_len, self.rewardMachine.n_states, self.nO), dtype=int)
-        self.optimal_player()
-        # pdb.set_trace()
-        super(RiverSwim_patrol2, self).__init__(self.nO, self.nA, self.P, self.rewards, self.startdistribution)
+        self.P_star = np.zeros((self.rewardMachine.n_states, self.nO, self.nA, self.rewardMachine.n_states, self.nO), dtype=np.float64)
+        self.R = np.zeros((self.rewardMachine.n_states, self.nO, self.nA), dtype=np.float64)
 
+        self.optimal_player()
+        self.np_random, _ = seeding.np_random(42)
+        # pdb.set_trace()
+        # super(RiverSwim_patrol2, self).__init__(self.nO, self.nA, self.P, self.rewards, self.startdistribution)
+
+    def name(self):
+        return f"riverswim_{self.nO}o_{self.epi_len}h"
     def reset(self):
         self.rewardMachine.reset()
-        self.s = categorical_sample(self.isd, self.np_random)
+        self.o = 0
         self.lastaction = None
-        return self.s
+        return self.o
 
     def step(self, a):
-        transitions = self.P[self.s][a]
-        i = categorical_sample([t[0] for t in transitions], self.np_random)
-        p, s, d = transitions[i]
-        event = self.rewardMachine.events[s, a]
+        event = self.rewardMachine.events[self.o, a]
         r = self.rewardMachine.next_step(event)
-        self.s = s
+        transitions = self.P[self.o][a]
+        i = categorical_sample([t[0] for t in transitions], self.np_random)
+        p, o, d = transitions[i]
+        # if r == 1:
+        #     print("debug")
+        self.o = o
         self.lastaction = a
-        return (s, r, d, "")
+        return (o, r, d, "")
     def optimal_player(self):
         # get P and R, using dp to solve the optimal value function
         nQ = self.rewardMachine.n_states
-        P = np.zeros((nQ, self.nO, self.nA, nQ, self.nO))
-        R = np.zeros((nQ, self.nO, self.nA))
         # construct real P and R
         for q in range(nQ):
             for o in range(self.nO):
@@ -139,25 +134,18 @@ class RiverSwim_patrol2(DiscreteMDP):
                     event = self.rewardMachine.events[o, a]
                     if event is not None:
                         next_q = self.rewardMachine.transitions[q, event]
-                        R[q, o, a] = self.rewardMachine.rewards[q, event]
+                        self.R[q, o, a] = self.rewardMachine.rewards[q, event]
                         for z in self.transitions[o][a].keys():
                             #pdb.set_trace()
-                            P[q, o, a, next_q, z] = self.transitions[o][a][z]
+                            self.P_star[q, o, a, next_q, z] = self.transitions[o][a][z]
                     else:
                         next_q = q
                         for z in self.transitions[o][a].keys():
-                            P[q, o, a, next_q, z] = self.transitions[o][a][z]
+                            self.P_star[q, o, a, next_q, z] = self.transitions[o][a][z]
 
         # Value Iteration for given P and R
-        for h in range(self.epi_len-1, -1, -1):
-            for q in range(nQ):
-                for o in range(self.nO):
-                    for a in range(self.nA):
-                        PV = np.sum(P[q, o, a, :, :]*self.V_star[h+1, :, :])
-                        self.Q_star[h, q, o, a] = PV + R[q, o, a]
+        self.Q_star, self.V_star, self.optimal_policy = value_iteration(self.P_star, self.R, self.epi_len)
 
-                    self.optimal_policy[h, q, o] = np.argmax(self.Q_star[h, q, o, :])
-                    self.V_star[h, q, o] = np.max(self.Q_star[h, q, o, :])
         print("value iteration finishes.")
 
 
@@ -296,21 +284,24 @@ class Flower(DiscreteMDP):
                         li.append((0, s, False))
                         self.transitions[s][1][ss] = 0
 
-        self.rewards[s] = {}
+        # self.rewards[s] = {}
 
         # print("Rewards : ", self.rewards, "\nTransitions : ", self.transitions)
 
         e, t, r = RM_Flower(sizeB)
-        self.rewardMachine = RewardMachine2(e, t, r)
+        self.rewardMachine = RewardMachine(e, t, r)
 
         self.Q_star = np.zeros((self.epi_len, self.rewardMachine.n_states, self.nO, self.nA), dtype=np.float64)
         self.V_star = np.zeros((self.epi_len+1, self.rewardMachine.n_states, self.nO), dtype=np.float64)
         self.optimal_policy = np.zeros((self.epi_len, self.rewardMachine.n_states, self.nO), dtype=int)
         self.P_star = np.zeros((self.rewardMachine.n_states, self.nO, self.nA, self.rewardMachine.n_states, self.nO), dtype=np.float64)
+        self.R = np.zeros((self.rewardMachine.n_states, self.nO, self.nA))
         self.optimal_player()
 
         super(Flower, self).__init__(self.nO, self.nA, self.P, self.rewards, self.startdistribution)
+    def name(self):
 
+        return f"flower_{self.rewardMachine.n_states}Q_{self.epi_len}h"
     def reset(self):
         self.rewardMachine.reset()
         self.s = categorical_sample(self.isd, self.np_random)
@@ -318,11 +309,11 @@ class Flower(DiscreteMDP):
         return self.s
 
     def step(self, a):
+        event = self.rewardMachine.events[self.s, a]
+        r = self.rewardMachine.next_step(event)
         transitions = self.P[self.s][a]
         i = categorical_sample([t[0] for t in transitions], self.np_random)
         p, s, d = transitions[i]
-        event = self.rewardMachine.events[s, a]
-        r = self.rewardMachine.next_step(event)
         self.s = s
         self.lastaction = a
         return (s, r, d, "")
@@ -330,7 +321,6 @@ class Flower(DiscreteMDP):
     def optimal_player(self):
         # get P and R, using dp to solve for the optimal value function
         nQ = self.rewardMachine.n_states
-        R = np.zeros((nQ, self.nO, self.nA))
         # construct real P and R
         for q in range(nQ):
             for o in range(self.nO):
@@ -342,21 +332,15 @@ class Flower(DiscreteMDP):
                         for z in range(self.nO):
                             #pdb.set_trace()
                             self.P_star[q, o, a, next_q, z] = self.transitions[o][a][z]
-                            R[q, o, a] = self.rewardMachine.rewards[q, event]
+                            self.R[q, o, a] = self.rewardMachine.rewards[q, event]
                     else:
                         next_q = q
                         for z in range(self.nO):
                             self.P_star[q, o, a, next_q, z] = self.transitions[o][a][z]
 
         # Value Iteration for given P and R
-        for h in range(self.epi_len-1, -1, -1):
-            for q in range(nQ):
-                for o in range(self.nO):
-                    for a in range(self.nA):
-                        PV = np.sum(self.P_star[q, o, a, :, :]*self.V_star[h+1, :, :])
-                        self.Q_star[h, q, o, a] = PV + R[q, o, a]
-                    self.optimal_policy[h, q, o] = np.argmax(self.Q_star[h, q, o, :])
-                    self.V_star[h, q, o] = np.max(self.Q_star[h, q, o, :])
+        self.Q_star, self.V_star, self.optimal_policy = value_iteration(self.P_star, self.R, self.epi_len)
+
         print("value iteration finishes.")
 if __name__ == "__main__":
     Test = True
