@@ -32,7 +32,7 @@ class UCRL2_RM:
 
     def reset(self, init_o = 0):
         self.observations = [[init_o], [], []]
-
+        self.init_o = init_o
     def updateN(self):
         for o in range(self.nO):
             for a in range(self.nA):

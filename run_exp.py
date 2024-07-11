@@ -98,16 +98,16 @@ def data_collect(env, learner_1, learner_2, optimal_learner, epi_len, i):
 if __name__ == "__main__":
     np.random.seed(None)
     epi_len = 20
-    num_epi = 3000  # K
-    num_states = 13
+    num_epi = 3  # K
+    num_states = 8
     num_exp = 8
-    test_name = "river_swim_patrol"
+    # test_name = "river_swim_patrol"
     # test_name = "flower"
-    # test_name = "two_room_2corners"
+    test_name = "two_room_2corners"
     run_exp(epi_len, num_epi, num_states, num_exp, test_name=test_name)
     data_visualization = True
     visual_range = (0, num_epi)
-
+    test_description = test_name+f'_{epi_len}_h_{num_states}_states'
     if data_visualization:
         data = np.load(f'data/' + test_name + f'_{num_states}states_{epi_len}h_{num_epi}K_{num_exp}runs.npz')
         result_1 = data['data_1']
@@ -140,9 +140,11 @@ if __name__ == "__main__":
         plt.ylabel('regret')
         plt.xlabel('episodes')
         plt.xlim(visual_range)
+        plt.title(test_description)
         # plt.ylim(0, 0.2*n_episodes)
         plt.grid(True)
         plt.legend()
+        plt.savefig('results/' + test_description + '_regret')
 
         plt.figure(2)
         plt.plot(k, mean_cumu_reward_1, marker='.', color='b', label='UCBVI_RM')
@@ -152,7 +154,9 @@ if __name__ == "__main__":
         plt.ylabel('cumulative reward')
         plt.xlabel('episodes')
         plt.xlim(visual_range)
+        plt.title(test_description)
         plt.grid(True)
+        plt.savefig('results/' + test_description + '_cumulative_reward')
 
         plt.figure(3)
         plt.plot(k, 1 / (k + 1) * mean_cumu_reward_1, marker='.', color='b', label='UCBVI_RM')
@@ -166,5 +170,8 @@ if __name__ == "__main__":
         plt.xlim(visual_range)
         plt.ylabel('averaged cumulative reward per episode')
         plt.xlabel('episodes')
+        plt.title(test_description)
+        plt.savefig('results/' + test_description + '_average_cumulative_reward')
         plt.show()
+
         print("plotting completes")
