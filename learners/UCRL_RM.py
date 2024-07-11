@@ -85,7 +85,6 @@ class UCRL2_RM:
                 u[:] = u0[h + 1, cur_q, :]
         else:
             # if h is self.epi_len - 1, next state should always be the starting state
-            # TODO: check sanity
             u[:] = u0[0, self.init_q, self.init_o]
 
         return np.argsort(u)
@@ -135,7 +134,6 @@ class UCRL2_RM:
                             action = np.random.choice(max_actions[0])
                             self.policy[h, q, o] = action
                 else:
-                    #TODO: +reward?
                     for q in range(self.nQ):
                         for o in range(self.nO):
                             temp = np.zeros(self.nA)

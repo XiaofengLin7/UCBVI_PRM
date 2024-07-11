@@ -21,6 +21,7 @@ def categorical_sample(prob_n, np_random):
     k = np.arange(len(prob_n))
     return np.random.choice(k, p=prob_n)
 
+
 def calculate_variance(prob_n: np.array, x: np.array) -> float:
     """
     :param prob_n:
@@ -47,6 +48,7 @@ def clip(x, range):
     """
     return max(min(x, range[1]), range[0])
 
+
 def calculate_cumu_reward_mean_std(all_reward_episodes_runs):
     """
     input: all_reward_episodes_runs: n_runs x n_episodes x epi_len
@@ -60,6 +62,7 @@ def calculate_cumu_reward_mean_std(all_reward_episodes_runs):
 
     return mean_cumu_reward, std
 
+
 def value_iteration(P, R, epi_len):
     """
     :param P: nQ x nO x nA x nQ x nO
@@ -70,7 +73,7 @@ def value_iteration(P, R, epi_len):
     nQ = R.shape[0]
     nO = R.shape[1]
     nA = R.shape[2]
-    V = np.zeros((epi_len+1, nQ, nO), dtype=np.float64)
+    V = np.zeros((epi_len + 1, nQ, nO), dtype=np.float64)
     Q = np.zeros((epi_len, nQ, nO, nA), dtype=np.float64)
     policy = np.zeros((epi_len, nQ, nO), dtype=int)
     for h in range(epi_len - 1, -1, -1):
@@ -86,6 +89,8 @@ def value_iteration(P, R, epi_len):
                 policy[h, q, o] = action
 
     return Q, V, policy
+
+
 def buildRiverSwim_patrol2(nbStates=5, max_steps=np.infty, reward_threshold=np.infty, rightProbaright=0.6,
                            rightProbaLeft=0.05, rewardL=0.1, rewardR=1., epi_len=10):
     register(
@@ -110,6 +115,19 @@ def buildFlower(sizeB, delta, epi_len, max_steps=np.infty, reward_threshold=np.i
     )
     name = 'Flower_' + str(sizeB) + '-v0'
     return gym.make(name), 6, 2
+
+
+def buildGridworld_RM(sizeX, sizeY, epi_len, map_name="2-room_1corner",
+                      max_steps=np.infty, reward_threshold=np.infty):
+    register(
+        id='Gridworld-RM' + map_name + '-v0',
+        entry_point='environments.MDPRM_library:RM_GridWorld',
+        max_episode_steps=max_steps,
+        reward_threshold=reward_threshold,
+        kwargs={'sizeX': sizeX, 'sizeY': sizeY, 'epi_len': epi_len, 'map_name': map_name}
+    )
+    g = gym.make('Gridworld-RM' + map_name + '-v0')
+    return g, g.env.nS, 4
 
 
 def cumulative_rewards_v1(env, learner, len_horizon):

@@ -126,7 +126,7 @@ class UCBVI_PRM:
                 for o in range(self.nO):
                     for a in range(self.nA):
                         if self.N[o, a] > 0:
-                            bonus = self.bonus(h, q, o, a, V)*0.1
+                            bonus = self.bonus(h, q, o, a, V)*1
                             # bonus = 0.01
                             #PV = self.calculate_PV(V, h+1, q, o, a)
                             PV = np.sum(self.P[q, o, a, :, :] * V[h+1, :, :])

@@ -15,15 +15,23 @@ import pickle
 
 
 def run_exp(epi_len, num_epi, num_states, num_exp, test_name="river_swim_patrol"):
-
     save_data = True
     if test_name == "river_swim_patrol":
         env, n_states, n_actions = buildRiverSwim_patrol2(nbStates=num_states, rightProbaright=0.6, rightProbaLeft=0.05,
                                                           rewardL=0.005, rewardR=1., epi_len=epi_len)
+        init_q, init_o = 0, 0
         print(f"Built River Swim MDP with {n_states} states and {epi_len} horizon...")
     elif test_name == "flower":
         env, n_states, n_actions = buildFlower(sizeB=num_states, delta=0.2, epi_len=epi_len)
         print(f"Built Multi-Task MDP with {n_states} states and {epi_len} horizon...")
+        init_q, init_o = 0, 0
+    elif test_name == "two_room_2corners":
+        env, n_states, n_actions = buildGridworld_RM(num_states, num_states, epi_len, map_name="two_room_2corners")
+        init_q = 0
+        init_o = env.to_s([(int)(env.sizeX / 2), (int)(env.sizeY / 2)])
+        print(f"Built two room MDP with {env.sizeX} x {env.sizeY} gridworld.")
+    else:
+        raise NameError("No such environment.")
     if save_data:
         print("Data will be saved after experiment completes.")
         with open(f'data/env/' + test_name + f'_{num_states}states_{epi_len}h.pkl', 'wb') as file:
@@ -40,8 +48,8 @@ def run_exp(epi_len, num_epi, num_states, num_exp, test_name="river_swim_patrol"
 
     learner_1 = UCBVI_RM(n_states, n_actions, epi_len, delta=0.05, K=num_epi, RM=env.rewardMachine)
     learner_2 = UCRL2_RM(n_states, n_actions, epi_len, delta=0.05, K=num_epi, RM=env.rewardMachine)
-    optimal_learner = Optimal_Player(env , K=num_epi)
-    V_star = env.V_star[0, 0, 0]
+    optimal_learner = Optimal_Player(env, K=num_epi)
+    V_star = env.V_star[0, init_q, init_o]
 
     # Create a list of argument tuples for each experiment
     args = [(env, learner_1, learner_2, optimal_learner, epi_len, i) for i in range(num_exp)]
@@ -79,9 +87,9 @@ def data_collect(env, learner_1, learner_2, optimal_learner, epi_len, i):
     # res1 = 0
     # res2 = 0
     optimal = cumulative_rewards_v1(env, optimal_learner, len_horizon=epi_len)
-    with open(f'data/learner/'+env.name()+f'_learner_1_{i}.pkl', 'wb') as file:
+    with open(f'data/learner/' + env.name() + f'_learner_1_{i}.pkl', 'wb') as file:
         pickle.dump(learner_1, file)
-    with open(f'data/learner/'+env.name()+f'_learner_2_{i}.pkl', 'wb') as file:
+    with open(f'data/learner/' + env.name() + f'_learner_2_{i}.pkl', 'wb') as file:
         pickle.dump(learner_2, file)
     print(f"Finishing {i} run...\n")
     return i, res1, res2, optimal
@@ -89,18 +97,19 @@ def data_collect(env, learner_1, learner_2, optimal_learner, epi_len, i):
 
 if __name__ == "__main__":
     np.random.seed(None)
-    epi_len = 30
-    num_epi = 6000 #K
-    num_states = 20
+    epi_len = 20
+    num_epi = 3000  # K
+    num_states = 13
     num_exp = 8
     test_name = "river_swim_patrol"
     # test_name = "flower"
+    # test_name = "two_room_2corners"
     run_exp(epi_len, num_epi, num_states, num_exp, test_name=test_name)
     data_visualization = True
     visual_range = (0, num_epi)
 
     if data_visualization:
-        data = np.load(f'data/'+test_name+f'_{num_states}states_{epi_len}h_{num_epi}K_{num_exp}runs.npz')
+        data = np.load(f'data/' + test_name + f'_{num_states}states_{epi_len}h_{num_epi}K_{num_exp}runs.npz')
         result_1 = data['data_1']
         result_2 = data['data_2']
         # data_star = np.load('data/flower_3states_6h_500000K_8runs_star.npz')
@@ -109,9 +118,9 @@ if __name__ == "__main__":
         # n_episodes = result_1.shape[1]
         with open(f'data/env/' + test_name + f'_{num_states}states_{epi_len}h.pkl', 'rb') as file:
             env = pickle.load(file)
-        with open(f'data/learner/'+env.name()+f'_learner_1_{num_exp-1}.pkl', 'rb') as file:
+        with open(f'data/learner/' + env.name() + f'_learner_1_{num_exp - 1}.pkl', 'rb') as file:
             learner_1 = pickle.load(file)
-        with open(f'data/learner/'+env.name()+f'_learner_2_{num_exp-1}.pkl', 'rb') as file:
+        with open(f'data/learner/' + env.name() + f'_learner_2_{num_exp - 1}.pkl', 'rb') as file:
             learner_2 = pickle.load(file)
 
         mean_cumu_reward_1, std_1 = calculate_cumu_reward_mean_std(result_1)
@@ -120,8 +129,8 @@ if __name__ == "__main__":
 
         k = np.arange(num_epi)
 
-        regret_1 = -mean_cumu_reward_1 + (k+1)*V_star#
-        regret_2 = -mean_cumu_reward_2 + (k+1)*V_star#mean_cumu_reward_star
+        regret_1 = -mean_cumu_reward_1 + (k + 1) * V_star  #
+        regret_2 = -mean_cumu_reward_2 + (k + 1) * V_star  # mean_cumu_reward_star
         plt.figure(1)
         plt.plot(regret_1, marker='.', color='b', label='UCBVI_RM')
         plt.plot(regret_2, marker='.', color='r', label='UCRL2_RM')
@@ -131,29 +140,28 @@ if __name__ == "__main__":
         plt.ylabel('regret')
         plt.xlabel('episodes')
         plt.xlim(visual_range)
-        #plt.ylim(0, 0.2*n_episodes)
+        # plt.ylim(0, 0.2*n_episodes)
         plt.grid(True)
         plt.legend()
 
         plt.figure(2)
         plt.plot(k, mean_cumu_reward_1, marker='.', color='b', label='UCBVI_RM')
         plt.plot(k, mean_cumu_reward_2, marker='.', color='r', label='UCRL2_RM')
-        plt.plot(k, (k+1)*V_star, marker='.', color='g', label='optimal')
+        plt.plot(k, (k + 1) * V_star, marker='.', color='g', label='optimal')
         plt.legend()
         plt.ylabel('cumulative reward')
         plt.xlabel('episodes')
         plt.xlim(visual_range)
         plt.grid(True)
 
-
         plt.figure(3)
-        plt.plot(k, 1/(k+1)*mean_cumu_reward_1, marker='.', color='b', label='UCBVI_RM')
-        plt.plot(k, 1/(k+1)*mean_cumu_reward_2, marker='.', color='r', label='UCRL2_RM')
-        plt.plot(k, env.V_star[0, 0, 0]*np.ones(num_epi), marker='.', color='g', label='optimal_1')
+        plt.plot(k, 1 / (k + 1) * mean_cumu_reward_1, marker='.', color='b', label='UCBVI_RM')
+        plt.plot(k, 1 / (k + 1) * mean_cumu_reward_2, marker='.', color='r', label='UCRL2_RM')
+        plt.plot(k, V_star * np.ones(num_epi), marker='.', color='g', label='optimal_1')
         em_cumu_reward_star = mean_cumu_reward_star
         em_cumu_reward_star[1:] = mean_cumu_reward_star[1:] - mean_cumu_reward_star[:-1]
 
-        plt.plot(k, em_cumu_reward_star.mean()*np.ones(num_epi), marker='.', color='purple', label='optimal_2')
+        plt.plot(k, em_cumu_reward_star.mean() * np.ones(num_epi), marker='.', color='purple', label='optimal_2')
         plt.legend()
         plt.xlim(visual_range)
         plt.ylabel('averaged cumulative reward per episode')
