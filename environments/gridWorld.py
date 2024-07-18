@@ -40,21 +40,25 @@ class GridWorld(DiscreteMDP):
         self.sizeX = sizeX
         self.sizeY = sizeY
 
-        self.nA = 4
+        self.nA = 5
         self.nS = sizeX * sizeY
-        self.nameActions = ["Up", "Down", "Left", "Right"]
-
-        if map_name == "twoRoom":
+        self.nameActions = ["Up", "Down", "Left", "Right", "Stay"]
+        if sizeX <= 3 or sizeY <= 3:
+            raise ValueError("Not valid size of grid world, length and width must be greater than 3.")
+        if "two_room" in map_name:
             self.maze = twoRoom(sizeX, sizeY)
-        elif map_name == "fourRoom":
+        elif "four_room" in map_name:
             self.maze = fourRoom(sizeX, sizeY)
+        else:
+            raise NameError("Invalid map name...")
         slip = min(1.0/3, slippery)
         self.massmap = [[slip, 1. - 3 * slip, slip, 0., slip],  # up : up down left right stay
                         [slip, 0., slip, 1. - 3 * slip, slip],  # down
                         [1. - 3 * slip, slip, 0., slip, slip],  # left
-                        [0., slip, 1. - 3 * slip, slip, slip]]  # right
+                        [0., slip, 1. - 3 * slip, slip, slip],  # right
+                        [0., 0., 0., 0., 1]]                    # stay
         self.P = self.makeTransition()
-        self.isd = self.makeInitialDistribution(self.maze)
+        self.isd = self.makeInitialDistribution(self.maze, [1, 1])
         self.R = np.zeros((self.nS, self.nA))
 
         super(GridWorld, self).__init__(self.nS, self.nA, self.P, self.R, self.isd, self.nameActions)
@@ -92,11 +96,9 @@ class GridWorld(DiscreteMDP):
 
         return P
 
-    def makeInitialDistribution(self, maze):
+    def makeInitialDistribution(self, maze, init_coordinate):
         isd = np.array(maze == -1.).astype('float64').ravel()
-        coordinate_center = [(int)(self.sizeX / 2), (int)(self.sizeY / 2)]
-
-        s_center = self.to_s(coordinate_center)
-        isd[s_center] = 1.
+        s_init = self.to_s(init_coordinate)
+        isd[s_init] = 1.
 
         return isd

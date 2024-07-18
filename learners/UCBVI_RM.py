@@ -4,7 +4,7 @@ import pdb
 
 
 class UCBVI_PRM:
-    def __init__(self, nO, nA, epi_len, delta, K, PRM):
+    def __init__(self, nO, nA, epi_len, delta, K, RM):
         self.nO = nO
         self.nA = nA
         self.epi_len = epi_len
@@ -16,8 +16,8 @@ class UCBVI_PRM:
         self.N = np.zeros((nO, nA))
         self.N_h = np.zeros((epi_len, nO))
         self.observations_buffer = [[], [], [], []]
-        self.RM = PRM
-        self.nQ = PRM.n_states
+        self.RM = RM
+        self.nQ = RM.n_states
         self.Q = np.zeros((epi_len, self.nQ, nO, nA))
         self.P = np.zeros((self.nQ, nO, nA, self.nQ, nO))
         self.R = np.zeros((self.nQ, nO, nA))
@@ -64,7 +64,7 @@ class UCBVI_PRM:
             else:
                 temp += self.p[o, a, z] * self.epi_len**2
 
-        bonus = np.sqrt(8*L*var_W/self.N[o, a]) + 14*self.epi_len/(3*self.N[o, a]) + np.sqrt(8*temp/self.N[o, a]) #+ np.sqrt(2*L/self.N[o, a])
+        bonus = np.sqrt(8*L*var_W/self.N[o, a]) + 14*self.epi_len/(3*self.N[o, a]) + np.sqrt(8*temp/self.N[o, a]) + np.sqrt(2*L/self.N[o, a])
         # if bonus < 1:
             # print("debug")
         return bonus
@@ -101,19 +101,24 @@ class UCBVI_PRM:
                             if event is not None:
                                 for next_q in range(self.nQ):
                                     if self.RM.transitions[q, event, next_q] > 0:
-                                        self.P[q, o, a, z, next_q] = (self.p[o, a, z] *
+                                        self.P[q, o, a, next_q, z] = (self.p[o, a, z] *
                                                                       self.RM.transitions[q, event, next_q])
                             else:
-                                self.P[q, o, a, z, q] = self.p[o, a, z]
+                                self.P[q, o, a, q, z] = self.p[o, a, z]
 
     def update_rewards(self):
         for q in range(self.nQ):
             for o in range(self.nO):
                 for a in range(self.nA):
                     #self.R[q, o, a] = np.sum(self.P[q, o, a, :, :] * (self.RM.rewards[q, :].reshape(self.nQ, 1)))
-                    event = self.RM.events[o, a]
-                    if event is not None:
-                        self.R[q, o, a] = self.RM.rewards[q, event]
+                    temp = 0.0
+                    for z in range(self.nO):
+                        event = self.RM.events[o, a, z]
+                        if event is not None:
+                            for next_q in range(self.nQ):
+                                temp += self.P[q, o, a, next_q, z] * self.RM.rewards[q, event, next_q]
+
+                    self.R[q, o, a] = temp
                     #if self.R[q, o, a] != np.sum(self.P[q, o, a, :, :] * (self.RM.rewards[q, :].reshape(self.nQ, 1))):
                     #    pdb.set_trace()
 
@@ -127,8 +132,6 @@ class UCBVI_PRM:
                     for a in range(self.nA):
                         if self.N[o, a] > 0:
                             bonus = self.bonus(h, q, o, a, V)*1
-                            # bonus = 0.01
-                            #PV = self.calculate_PV(V, h+1, q, o, a)
                             PV = np.sum(self.P[q, o, a, :, :] * V[h+1, :, :])
                             self.Q[h, q, o, a] = min(min(self.Q[h, q, o, a], self.epi_len), self.R[q, o, a] + PV + bonus)
                         else:
@@ -187,3 +190,12 @@ class UCBVI_RM(UCBVI_PRM):
 
         var_W = calculate_variance(self.p[o, a, :], W_h)
         return var_W
+
+    def update_rewards(self):
+        for q in range(self.nQ):
+            for o in range(self.nO):
+                for a in range(self.nA):
+                    #self.R[q, o, a] = np.sum(self.P[q, o, a, :, :] * (self.RM.rewards[q, :].reshape(self.nQ, 1)))
+                    event = self.RM.events[o, a]
+                    if event is not None:
+                        self.R[q, o, a] = self.RM.rewards[q, event]

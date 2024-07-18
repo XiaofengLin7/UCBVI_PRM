@@ -3,7 +3,7 @@ from jinja2 import environment
 
 from utils import *
 from environments.discreteMDP import DiscreteMDP
-from environments.rewardMachine import RewardMachine, RewardMachine2
+from environments.rewardMachine import RewardMachine, RewardMachine2, ProbabilisticRewardMachine
 from environments.gridWorld import GridWorld, twoRoom, fourRoom
 from gym.utils import seeding
 import scipy.stats as stat
@@ -104,8 +104,7 @@ class RiverSwim_patrol2(DiscreteMDP):
 
         self.optimal_player()
         self.np_random, _ = seeding.np_random(42)
-        # pdb.set_trace()
-        # super(RiverSwim_patrol2, self).__init__(self.nO, self.nA, self.P, self.rewards, self.startdistribution)
+
 
     def name(self):
         return f"riverswim_{self.nO}o_{self.epi_len}h"
@@ -122,8 +121,6 @@ class RiverSwim_patrol2(DiscreteMDP):
         transitions = self.P[self.o][a]
         i = categorical_sample([t[0] for t in transitions], self.np_random)
         p, o, d = transitions[i]
-        # if r == 1:
-        #     print("debug")
         self.o = o
         self.lastaction = a
         return (o, r, d, "")
@@ -350,58 +347,17 @@ class Flower(DiscreteMDP):
         self.Q_star, self.V_star, self.optimal_policy = value_iteration(self.P_star, self.R, self.epi_len)
 
 
-# def mapping_2room(x, y, Y):
-#     return y * (Y) + x
-#
-#
-# def RM_twoRoom_4corner(nX, nY):  # 0 = A, 1 = B1, 2 = B2, 3 = C1, 4 = C2, 5 = D1, 6 = D2, 7 = E1, 8 = E2
-#     X = nX - 2
-#     Y = nY - 2
-#     X2 = (int)(X / 2)
-#     sA = mapping_2room(X2, 1, Y)
-#     sB1 = X2
-#     sB2 = 0
-#     sC1 = mapping_2room(X2 - 1, 1, Y)
-#     sC2 = X - 1
-#     sD1 = mapping_2room(X2, 2, Y)
-#     sD2 = mapping_2room(0, Y - 1, Y)
-#     sE1 = mapping_2room(X2 + 1, 1, Y)
-#     sE2 = mapping_2room(X - 1, Y - 1, Y)
-#     events = np.array([[None for _ in range(4)] for _ in range(nX * nY)])
-#     for a in range(4):
-#         events[sA, a] = 0
-#         events[sB1, a] = 1
-#         events[sB2, a] = 2
-#         events[sC1, a] = 3
-#         events[sC2, a] = 4
-#         events[sD1, a] = 5
-#         events[sD2, a] = 6
-#         events[sE1, a] = 7
-#         events[sE2, a] = 8
-#     transitions = np.array([[0, 1, 0, 3, 0, 5, 0, 7, 0],
-#                             [1, 1, 2, 1, 1, 1, 1, 1, 1],
-#                             [0, 2, 2, 2, 2, 2, 2, 2, 2],
-#                             [3, 3, 3, 3, 4, 3, 3, 3, 3],
-#                             [0, 4, 4, 4, 4, 4, 4, 4, 4],
-#                             [5, 5, 5, 5, 5, 5, 6, 5, 5],
-#                             [0, 6, 6, 6, 6, 6, 6, 6, 6],
-#                             [7, 7, 7, 7, 7, 7, 7, 7, 8],
-#                             [0, 8, 8, 8, 8, 8, 8, 8, 8]])
-#     max_i = 9
-#     rewards = np.zeros((max_i, max_i))
-#     for i in range(max_i):
-#         rewards[0, i] = 1
-#     return events, transitions, rewards
-
 def to_s(sizeY, rowcol):
-        return rowcol[0] * sizeY + rowcol[1]
+    return rowcol[0] * sizeY + rowcol[1]
+
+
 def RM_tworoom_2corners(sizeX, sizeY):
     # [1, 1]->[sizeX-2, sizeY-2], reward = 1
     nS = sizeX * sizeY
     events = np.array([[None for _ in range(4)] for _ in range(nS)])
     coordinate_A = [1, 1]
-    coordinate_B = [sizeX-2, sizeY-2]
-    coordinate_center = [(int)(sizeX/2), (int)(sizeY/2)]
+    coordinate_B = [sizeX - 2, sizeY - 2]
+    coordinate_center = [(int)(sizeX / 2), (int)(sizeY / 2)]
     s_A = to_s(sizeY, coordinate_A)
     s_B = to_s(sizeY, coordinate_B)
     s_center = to_s(sizeY, coordinate_center)
@@ -416,6 +372,8 @@ def RM_tworoom_2corners(sizeX, sizeY):
                         [0, 0, 1],
                         [0, 0, 0]])
     return events, transitions, rewards
+
+
 class RM_GridWorld(GridWorld):
     def __init__(self, sizeX, sizeY, epi_len, map_name, slippery=0.1):
         self.sizeX, self.sizeY = sizeX, sizeY
@@ -432,7 +390,7 @@ class RM_GridWorld(GridWorld):
             raise NameError("Invalid map name...")
         print("The maze looks like:\n")
         print(self.maze)
-        print("--------------------\n")
+        print("-----------------------------------------------------\n")
         slip = min(1.0 / 3, slippery)
         self.massmap = [[slip, 1. - 3 * slip, slip, 0., slip],  # up : up down left right stay
                         [slip, 0., slip, 1. - 3 * slip, slip],  # down
@@ -464,13 +422,14 @@ class RM_GridWorld(GridWorld):
         self.Q_star, self.V_star, self.optimal_policy = value_iteration(self.P_star, self.R, self.epi_len)
         self.np_random, _ = seeding.np_random(42)
         print("nothing")
+
     def name(self):
         return f"two_rooms_{self.sizeX}x{self.sizeY}_{self.epi_len}h"
+
     def make_PnR(self):
         nQ = self.rewardMachine.n_states
         # construct real P and R
         for q in range(nQ):
-            # TODO: check if need index() function when index s
             for s in range(self.nS):
                 for a in range(self.nA):
                     event = self.rewardMachine.events[s, a]
@@ -501,3 +460,224 @@ class RM_GridWorld(GridWorld):
         self.lastaction = None
         return self.s
 
+
+def PRM_warehouse(sizeX, sizeY):
+    coordinate_cs = [1, 1]  # charging station
+    coordinate_it = [1, sizeY-2]  # item location
+    coordinate_dl = [sizeX - 2, sizeY - 2]  # delivery location
+    nS = sizeX * sizeY
+    s_cs = to_s(sizeY, coordinate_cs)
+    s_it = to_s(sizeY, coordinate_it)
+    s_dl = to_s(sizeY, coordinate_dl)
+    events = np.array([[[None for _ in range(nS)] for _ in range(5)] for _ in range(nS)])
+    for a in range(5):
+        events[s_it, a, s_it] = 0  # arrive at item location
+        events[s_dl, a, s_dl] = 1  # arrive at delivery location
+
+    transitions = np.zeros(shape=(3, 2, 3), dtype=np.float64)
+    transitions[0, 0, 0] = 0.2  # 20% the item is not ready
+    transitions[0, 0, 1] = 0.8  # 80% the item is ready
+    transitions[0, 1, 0] = 1
+    transitions[1, 0, 1] = 1
+    transitions[1, 1, 1] = 0.1  # 10% the delivery location is occupied
+    transitions[1, 1, 2] = 0.9  # 90% the delivery location is not occupied
+    transitions[2, 0, 2] = 1
+    transitions[2, 1, 2] = 1
+
+    rewards = np.zeros(shape=(3, 2, 3), dtype=np.float64)
+    rewards[1, 1, 2] = 1  # agent is only rewarded when he completes picking up items and delivery
+
+    return events, transitions, rewards
+
+
+class Warehouse_PRM(GridWorld):
+    def __init__(self, sizeX, sizeY, epi_len, map_name, slippery=0.1):
+        e, t, r = PRM_warehouse(sizeX, sizeY)
+        self.rewardMachine = ProbabilisticRewardMachine(e, t, r)
+        super(Warehouse_PRM, self).__init__(sizeX, sizeY, map_name, slippery)
+        self.epi_len = epi_len
+        nQ = self.rewardMachine.n_states
+        self.P_star = np.zeros((nQ, self.nS, self.nA, nQ, self.nS))
+        self.R = np.zeros((nQ, self.nS, self.nA))
+        self.make_PnR()
+        self.Q_star = np.zeros((self.epi_len, self.rewardMachine.n_states, self.nS, self.nA), dtype=np.float64)
+        self.V_star = np.zeros((self.epi_len + 1, self.rewardMachine.n_states, self.nS), dtype=np.float64)
+        self.optimal_policy = np.zeros((self.epi_len, self.rewardMachine.n_states, self.nS), dtype=int)
+        self.Q_star, self.V_star, self.optimal_policy = value_iteration(self.P_star, self.R, self.epi_len)
+        self.np_random, _ = seeding.np_random(42)
+
+    def name(self):
+        return f"warehouse_{self.sizeX}x{self.sizeY}_{self.epi_len}h"
+
+    def step(self, a):
+        transitions = self.P[self.s][a]
+        i = categorical_sample([t[0] for t in transitions], self.np_random)
+        p, new_s, d = transitions[i]
+        event = self.rewardMachine.events[self.s, a, new_s]
+        r = self.rewardMachine.next_step(event)
+        self.s = new_s
+        return (self.s, r, d, "")
+
+    def reset(self):
+        self.rewardMachine.reset()
+        self.s = categorical_sample(self.isd, self.np_random)
+        self.lastaction = None
+        return self.s
+
+    def make_PnR(self):
+        nQ = self.rewardMachine.n_states
+        # construct real P and R
+        for q in range(nQ):
+            for s in range(self.nS):
+                for a in range(self.nA):
+                    for (p, next_s, _) in self.P[s][a]:
+                        event = self.rewardMachine.events[s, a, next_s]
+                        if event is not None:
+                            for next_q in range(nQ):
+                                self.P_star[q, s, a, next_q, next_s] += self.rewardMachine.transitions[q, event, next_q] * p
+                        else:
+                            self.P_star[q, s, a, q, next_s] += p
+
+        for q in range(nQ):
+            for s in range(self.nS):
+                for a in range(self.nA):
+                    temp = 0.0
+                    for z in range(self.nS):
+                        event = self.rewardMachine.events[s, a, z]
+                        if event is not None:
+                            for next_q in range(nQ):
+                                temp += self.P_star[q, s, a, next_q, z] * self.rewardMachine.rewards[q, event, next_q]
+
+                    self.R[q, s, a] = temp
+
+
+def PRM_riverSwim_patrol2(S):
+    events = np.array([[[None for _ in range(S)] for _ in range(2)] for _ in range(S)])
+    for a in range(2):
+        events[0, a, :] = 0
+        events[S - 2, a, S-1] = 1
+    transitions = np.zeros(shape=(2, 2, 2), dtype=np.float64)
+    transitions[0, 0, 0] = 1
+    transitions[0, 1, 0] = 0.1 # 10% the transition is not successful
+    transitions[0, 1, 1] = 0.9 # 90% the transition is successful
+    transitions[1, 0, 0] = 1
+    transitions[1, 1, 1] = 1
+
+    rewards = np.zeros(shape=(2, 2, 2), dtype=np.float64)
+    rewards[0, 1, 1] = 1
+
+    return events, transitions, rewards
+class RiverSwim_patrol2_PRM(DiscreteMDP):
+    def __init__(self, nbStates, epi_len, rightProbaright=0.6, rightProbaLeft=0.05, rewardL=0.1,
+                 rewardR=1.):  # , ergodic=False):
+        self.nO = nbStates
+        self.nA = 2
+        self.states = range(0, nbStates)
+        self.actions = range(0, self.nA)
+        self.nameActions = ["R", "L"]
+
+        self.isd = np.zeros((self.nO))
+        self.isd[0] = 1.
+        self.rewards = {}
+        self.P = {}
+        self.o = 0
+        self.transitions = {}
+        self.epi_len = epi_len
+        # Initialize a randomly generated MDP
+        for o in self.states:
+            self.P[o] = {}
+            self.transitions[o] = {}
+            # GOING RIGHT
+            self.transitions[o][0] = {}
+            self.P[o][0] = []  # 0=right", 1=left
+            li = self.P[o][0]
+            prr = 0.
+            if (o < self.nO - 1) and (o > 0):
+                li.append((rightProbaright, o + 1, False))
+                self.transitions[o][0][o + 1] = rightProbaright
+                prr = rightProbaright
+            elif (o == 0):  # To have 0.6 on the leftmost state
+                li.append((0.6, o + 1, False))
+                self.transitions[o][0][o + 1] = 0.6
+                prr = 0.6
+            prl = 0.
+            if (o > 0) and (o < self.nO - 1):
+                li.append((rightProbaLeft, o - 1, False))
+                self.transitions[o][0][o - 1] = rightProbaLeft
+                prl = rightProbaLeft
+            elif o == self.nO - 1:  # To have 0.6 and 0.4 on rightmost state
+                li.append((0.4, o - 1, False))
+                self.transitions[o][0][o - 1] = 0.4
+                prl = 0.4
+            li.append((1. - prr - prl, o, False))
+            self.transitions[o][0][o] = 1. - prr - prl
+
+            # GOING LEFT
+
+            self.P[o][1] = []  # 0=right", 1=left
+            self.transitions[o][1] = {}
+            li = self.P[o][1]
+            if (o > 0):
+                li.append((1., o - 1, False))
+                self.transitions[o][1][o - 1] = 1.
+            else:
+                li.append((1., o, False))
+                self.transitions[o][1][o] = 1.
+        e, t, r = PRM_riverSwim_patrol2(nbStates)
+        self.rewardMachine = ProbabilisticRewardMachine(e, t, r)
+        nQ = self.rewardMachine.n_states
+        self.P_star = np.zeros((nQ, self.nO, self.nA, nQ, self.nO))
+        self.R = np.zeros((nQ, self.nO, self.nA))
+        self.make_PnR()
+        self.Q_star = np.zeros((self.epi_len, self.rewardMachine.n_states, self.nO, self.nA), dtype=np.float64)
+        self.V_star = np.zeros((self.epi_len + 1, self.rewardMachine.n_states, self.nO), dtype=np.float64)
+        self.optimal_policy = np.zeros((self.epi_len, self.rewardMachine.n_states, self.nO), dtype=int)
+        self.Q_star, self.V_star, self.optimal_policy = value_iteration(self.P_star, self.R, self.epi_len)
+        self.np_random, _ = seeding.np_random(42)
+
+    def name(self):
+        return f"riverSwim_patrol2_prm_{self.nO}states_{self.epi_len}h"
+
+    def step(self, a):
+        transitions = self.P[self.o][a]
+        i = categorical_sample([t[0] for t in transitions], self.np_random)
+        p, new_o, d = transitions[i]
+        event = self.rewardMachine.events[self.o, a, new_o]
+        r = self.rewardMachine.next_step(event)
+        self.o = new_o
+        return (self.o, r, d, "")
+
+    def reset(self):
+        self.rewardMachine.reset()
+        self.o = categorical_sample(self.isd, self.np_random)
+        self.lastaction = None
+        return self.o
+
+    def make_PnR(self):
+        nQ = self.rewardMachine.n_states
+        # construct real P and R
+        for q in range(nQ):
+            for s in range(self.nO):
+                for a in range(self.nA):
+                    for (p, next_s, _) in self.P[s][a]:
+                        event = self.rewardMachine.events[s, a, next_s]
+                        if event is not None:
+                            for next_q in range(nQ):
+                                self.P_star[q, s, a, next_q, next_s] += self.rewardMachine.transitions[q, event, next_q] * p
+                        else:
+                            self.P_star[q, s, a, q, next_s] += p
+
+        for q in range(nQ):
+            for s in range(self.nO):
+                for a in range(self.nA):
+                    temp = 0.0
+                    for z in range(self.nO):
+                        event = self.rewardMachine.events[s, a, z]
+                        if event is not None:
+                            for next_q in range(nQ):
+                                temp += self.P_star[q, s, a, next_q, z] * self.rewardMachine.rewards[q, event, next_q]
+
+                    self.R[q, s, a] = temp
+
+if __name__ == "__main__":
+    PRM_warehouse(5, 5)

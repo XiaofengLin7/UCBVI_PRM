@@ -129,6 +129,31 @@ def buildGridworld_RM(sizeX, sizeY, epi_len, map_name="2-room_1corner",
     g = gym.make('Gridworld-RM' + map_name + '-v0')
     return g, g.env.nS, 4
 
+def buildWarehouse_PRM(sizeX, sizeY, epi_len, map_name="two_room",
+                      max_steps=np.infty, reward_threshold=np.infty):
+    register(
+        id='Warehouse-PRM' + map_name + '-v0',
+        entry_point='environments.MDPRM_library:Warehouse_PRM',
+        max_episode_steps=max_steps,
+        reward_threshold=reward_threshold,
+        kwargs={'sizeX': sizeX, 'sizeY': sizeY, 'epi_len': epi_len, 'map_name': map_name}
+    )
+    g = gym.make('Warehouse-PRM' + map_name + '-v0')
+    return g, g.env.nS, 5
+
+
+def buildRiverSwim_patrol2_PRM(nbStates=5, max_steps=np.infty, reward_threshold=np.infty, rightProbaright=0.6,
+                           rightProbaLeft=0.05, rewardL=0.1, rewardR=1., epi_len=10):
+    register(
+        id='RiverSwim_patrol2_PRM-v0',
+        entry_point='environments.MDPRM_library:RiverSwim_patrol2_PRM',
+        max_episode_steps=max_steps,
+        reward_threshold=reward_threshold,
+        kwargs={'nbStates': nbStates, 'rightProbaright': rightProbaright, 'rightProbaLeft': rightProbaLeft,
+                'rewardL': rewardL, 'rewardR': rewardR, 'epi_len': epi_len}
+    )
+
+    return gym.make('RiverSwim_patrol2_PRM-v0'), nbStates, 2
 
 def cumulative_rewards_v1(env, learner, len_horizon):
     cumulative_rewards = []

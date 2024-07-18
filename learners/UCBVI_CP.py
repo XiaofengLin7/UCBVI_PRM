@@ -65,18 +65,18 @@ class UCBVI_CP():
                     self.R[q, o, a] = 0.0
                     for z in range(self.nO):
                         for next_q in range(self.nQ):
-                            self.R[q, o, a] += self.P[q, o, a, next_q, z] * self.rm_rewards[q, next_q]
+                            self.R[q, o, a] += self.P[q, o, a, next_q, z] * np.sum(self.rm_rewards[q, :, next_q])
 
     def bonus(self, h, q, o, a, V) -> float:
         T = self.K * self.epi_len
-        L = np.log(5*self.nQ*self.nO*self.nA*T/self.delta)
+        L = np.log(5*self.nO*self.nA*T/self.delta)
         # check dimensions
         var_V = calculate_variance(self.P[q, o, a, :, :].reshape((self.nQ*self.nO, 1)),
                                    V[h+1, :, :].reshape((self.nQ*self.nO, 1)))
         temp = 0.0
         for next_q in range(self.nQ):
             for next_o in range(self.nO):
-                if self.N_h[h+1, next_q, next_o] > 0:
+                if (h < self.epi_len-1) and (self.N_h[h+1, next_q, next_o]) > 0:
                     regret_state = (10000 * (self.epi_len**3) * (self.nO**2) * (self.nQ**2) * self.nA * (L**2) /
                                     self.N_h[h+1, next_q, next_o])
                     temp += self.P[q, o, a, next_q, next_o] * min(self.epi_len**2, regret_state)
@@ -88,9 +88,9 @@ class UCBVI_CP():
         return bonus
 
     def update_Q(self):
-        V = np.zeros((self.epi_len, self.nQ, self.nO))
+        V = np.zeros((self.epi_len+1, self.nQ, self.nO))
         # V_H = 0 for all s
-        for h in range(self.epi_len-2, -1, -1):
+        for h in range(self.epi_len-1, -1, -1):
             for q in range(self.nQ):
                 for o in range(self.nO):
                     for a in range(self.nA):

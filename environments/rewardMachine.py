@@ -46,9 +46,10 @@ class ProbabilisticRewardMachine(RewardMachine):
         super().__init__(Events, Transitions, Rewards, init)
         self.np_random = np_random
     def next_step(self, event):
+        reward = 0
         self.previous_state = self.current_state
-        if event != None:
+        if event is not None:
             old_state = self.current_state
-            self.current_state = categorical_sample(self.Transitions[old_state, event], self.np_random)
-            reward = self.rewards[old_state, self.current_state]
+            self.current_state = categorical_sample(self.transitions[old_state, event, :], self.np_random)
+            reward = self.rewards[old_state, event, self.current_state]
         return reward
