@@ -180,14 +180,11 @@ def cumulative_rewards_v1(env, learner, len_horizon):
             cur_epi_cum_rewards += reward
             cur_epi_rewards.append(cur_epi_cum_rewards)
 
-            # if env.rewardMachine.current_state == 1:
-            # pdb.set_trace()
-            #    pass
 
         # print("Episode {}: cumulative reward is {}".format(k+1, cur_epi_cum_rewards))
         cumulative_rewards.append(cur_epi_rewards)
         # learner.learn()
-    # pdb.set_trace()
+
     return cumulative_rewards
 
 

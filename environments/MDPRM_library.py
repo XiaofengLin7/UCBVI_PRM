@@ -1,10 +1,10 @@
 import numpy as np
-from jinja2 import environment
+
 
 from utils import *
 from environments.discreteMDP import DiscreteMDP
 from environments.rewardMachine import RewardMachine, RewardMachine2, ProbabilisticRewardMachine
-from environments.gridWorld import GridWorld, twoRoom, fourRoom
+from environments.gridWorld import GridWorld, twoRoom, fourRoom, check_valid_position_warehouse
 from gym.utils import seeding
 import scipy.stats as stat
 import pdb
@@ -461,17 +461,38 @@ class RM_GridWorld(GridWorld):
         return self.s
 
 
+
 def PRM_warehouse(sizeX, sizeY):
-    coordinate_cs = [1, 1]  # charging station
-    coordinate_it = [1, sizeY-2]  # item location
-    coordinate_dl = [sizeX - 2, sizeY - 2]  # delivery location
+    c_cs = [0, 0]  # charging station
+    c_it = [0, sizeY-1]  # item location
+    c_dl = [sizeX - 1, sizeY - 1]  # delivery location
     nS = sizeX * sizeY
-    s_cs = to_s(sizeY, coordinate_cs)
-    s_it = to_s(sizeY, coordinate_it)
-    s_dl = to_s(sizeY, coordinate_dl)
+    s_cs = to_s(sizeY, c_cs)
+    s_it = to_s(sizeY, c_it)
+    s_dl = to_s(sizeY, c_dl)
+
+    uc_it = [c_it[0]-1, c_it[1]]  # up coordinate of item location
+    dc_it = [c_it[0]+1, c_it[1]]  # down coordinate of item location
+    lc_it = [c_it[0], c_it[1]-1]  # left coordinate of item location
+    rc_it = [c_it[0], c_it[1]+1]  # right coordinate of item location
+
+    uc_dl = [c_dl[0]-1, c_dl[1]]  # up coordinate of delivery location
+    dc_dl = [c_dl[0]+1, c_dl[1]]  # down coordinate of delivery location
+    lc_dl = [c_dl[0], c_dl[1]-1]  # left coordinate of delivery location
+    rc_dl = [c_dl[0], c_dl[1]+1]  # right coordinate of delivery location
+
     events = np.array([[[None for _ in range(nS)] for _ in range(5)] for _ in range(nS)])
     for a in range(5):
+        if check_valid_position_warehouse(sizeX, sizeY, uc_it): events[to_s(sizeY, uc_it), a, s_it] = 0
+        if check_valid_position_warehouse(sizeX, sizeY, dc_it): events[to_s(sizeY, dc_it), a, s_it] = 0
+        if check_valid_position_warehouse(sizeX, sizeY, lc_it): events[to_s(sizeY, lc_it), a, s_it] = 0
+        if check_valid_position_warehouse(sizeX, sizeY, rc_it): events[to_s(sizeY, rc_it), a, s_it] = 0
         events[s_it, a, s_it] = 0  # arrive at item location
+
+        if check_valid_position_warehouse(sizeX, sizeY, uc_dl): events[to_s(sizeY, uc_dl), a, s_dl] = 1
+        if check_valid_position_warehouse(sizeX, sizeY, dc_dl): events[to_s(sizeY, dc_dl), a, s_dl] = 1
+        if check_valid_position_warehouse(sizeX, sizeY, lc_dl): events[to_s(sizeY, lc_dl), a, s_dl] = 1
+        if check_valid_position_warehouse(sizeX, sizeY, rc_dl): events[to_s(sizeY, rc_dl), a, s_dl] = 1
         events[s_dl, a, s_dl] = 1  # arrive at delivery location
 
     transitions = np.zeros(shape=(3, 2, 3), dtype=np.float64)
@@ -680,4 +701,4 @@ class RiverSwim_patrol2_PRM(DiscreteMDP):
                     self.R[q, s, a] = temp
 
 if __name__ == "__main__":
-    PRM_warehouse(5, 5)
+    PRM_warehouse(4, 4)

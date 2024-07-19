@@ -1,6 +1,6 @@
 import numpy as np
 from utils import calculate_variance
-
+import math
 
 class UCBVI_CP():
     def __init__(self, nQ, nO, nA, epi_len, delta, K, rm_rewards):
@@ -22,7 +22,7 @@ class UCBVI_CP():
 
         self.initial_q = 0
         self.rm_rewards = rm_rewards
-
+        self.doubling_trick = True
         np.random.seed(42)
     def name(self):
         return "UCBVI_CP"
@@ -48,8 +48,14 @@ class UCBVI_CP():
         time = self.observations_buffer[4][-1]
 
         self.N_xay[old_q, old_obs, action, new_q, new_obs] += 1
-        self.N[old_q, old_obs, action] += 1
         self.N_h[time, new_q, new_obs] += 1
+        self.N[old_q, old_obs, action] += 1
+        if self.doubling_trick:
+            if math.log2(self.N[old_q, old_obs, action]).is_integer():
+                self.update_transition_prob()
+                self.update_rewards()
+                self.update_Q()
+
 
     def update_transition_prob(self):
         for q in range(self.nQ):
@@ -83,7 +89,7 @@ class UCBVI_CP():
                 else:
                     temp += self.P[q, o, a, next_q, next_o] * self.epi_len**2
 
-        bonus = (np.sqrt(8*L*var_V/self.N[q, o, a]) + 14*self.epi_len/(3*self.N[q, o, a]) +
+        bonus = (np.sqrt(8*L*var_V/self.N[q, o, a]) + 14*self.epi_len*L/(3*self.N[q, o, a]) +
                  np.sqrt(8*temp/self.N[q, o, a]))
         return bonus
 
@@ -105,10 +111,12 @@ class UCBVI_CP():
                     V[h, q, o] = np.max(self.Q[h, q, o, :])
 
     def learn(self):
-
-        self.update_transition_prob()
-        self.update_rewards()
-        self.update_Q()
+        if self.doubling_trick is False:
+            self.update_transition_prob()
+            self.update_rewards()
+            self.update_Q()
+        else:
+            pass # already updated in update_N
 
     def play(self, h, q, o):
         max_Q = np.max(self.Q[h, q, o, :])

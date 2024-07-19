@@ -1,7 +1,6 @@
 import numpy as np
 from environments.discreteMDP import DiscreteMDP
 
-
 def twoRoom(X, Y):
     X2 = (int)(X / 2)
     maze = np.ones((X, Y))
@@ -35,22 +34,35 @@ def fourRoom(X, Y):
     return maze
 
 
+def warehouse(sizeX, sizeY):
+    return np.ones(shape=(sizeX, sizeY))
+
+def check_valid_position_warehouse(sizeX, sizeY, coordinate):
+    if coordinate[0] < 0 or coordinate[0] >= sizeX or coordinate[1] < 0 or coordinate[1] >= sizeY:
+        return False
+    return True
+
 class GridWorld(DiscreteMDP):
     def __init__(self, sizeX, sizeY, map_name, slippery=0.1):
         self.sizeX = sizeX
         self.sizeY = sizeY
-
+        self.map_name = map_name
         self.nA = 5
         self.nS = sizeX * sizeY
         self.nameActions = ["Up", "Down", "Left", "Right", "Stay"]
-        if sizeX <= 3 or sizeY <= 3:
+        if sizeX < 3 or sizeY < 3:
             raise ValueError("Not valid size of grid world, length and width must be greater than 3.")
         if "two_room" in map_name:
             self.maze = twoRoom(sizeX, sizeY)
         elif "four_room" in map_name:
             self.maze = fourRoom(sizeX, sizeY)
+        elif "warehouse" in map_name:
+            self.maze = warehouse(sizeX, sizeY)
         else:
             raise NameError("Invalid map name...")
+        print("The maze looks like:\n")
+        print(self.maze)
+        print("-----------------------------------------------------\n")
         slip = min(1.0/3, slippery)
         self.massmap = [[slip, 1. - 3 * slip, slip, 0., slip],  # up : up down left right stay
                         [slip, 0., slip, 1. - 3 * slip, slip],  # down
@@ -76,16 +88,28 @@ class GridWorld(DiscreteMDP):
 
         for s in range(self.nS):
             x, y = self.from_s(s)
-            us = [(x - 1) % X, y % Y]
-            ds = [(x + 1) % X, y % Y]
-            ls = [x % X, (y - 1) % Y]
-            rs = [x % X, (y + 1) % Y]
-            ss = [x, y]
-            # in case next state hits the wall...
-            if self.maze[us[0]][us[1]] <= 0 or self.maze[x][y] <= 0: us = ss
-            if self.maze[ds[0]][ds[1]] <= 0 or self.maze[x][y] <= 0: ds = ss
-            if self.maze[ls[0]][ls[1]] <= 0 or self.maze[x][y] <= 0: ls = ss
-            if self.maze[rs[0]][rs[1]] <= 0 or self.maze[x][y] <= 0: rs = ss
+            if "warehouse" not in self.map_name:
+                us = [(x - 1) % X, y % Y]
+                ds = [(x + 1) % X, y % Y]
+                ls = [x % X, (y - 1) % Y]
+                rs = [x % X, (y + 1) % Y]
+                ss = [x, y]
+                # in case next state hits the wall...
+                if self.maze[us[0]][us[1]] <= 0 or self.maze[x][y] <= 0: us = ss
+                if self.maze[ds[0]][ds[1]] <= 0 or self.maze[x][y] <= 0: ds = ss
+                if self.maze[ls[0]][ls[1]] <= 0 or self.maze[x][y] <= 0: ls = ss
+                if self.maze[rs[0]][rs[1]] <= 0 or self.maze[x][y] <= 0: rs = ss
+            else:
+                us = [(x - 1), y]
+                ds = [(x + 1), y]
+                ls = [x, (y - 1)]
+                rs = [x, (y + 1)]
+                ss = [x, y]
+                if check_valid_position_warehouse(X, Y, us) is False: us = ss
+                if check_valid_position_warehouse(X, Y, ds) is False: ds = ss
+                if check_valid_position_warehouse(X, Y, ls) is False: ls = ss
+                if check_valid_position_warehouse(X, Y, rs) is False: rs = ss
+
             for a in range(self.nA):
                 li = P[s][a]
                 li.append((self.massmap[a][0], self.to_s(ls), False))

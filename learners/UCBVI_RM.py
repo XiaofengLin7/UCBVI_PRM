@@ -22,7 +22,7 @@ class UCBVI_PRM:
         self.P = np.zeros((self.nQ, nO, nA, self.nQ, nO))
         self.R = np.zeros((self.nQ, nO, nA))
         self.policy = np.zeros((self.epi_len, self.nQ, self.nO,), dtype=int)
-
+        self.doubling_trick = True
         #np.random.seed(42)
     def name(self):
         return 'UCBVI_PRM'
@@ -42,12 +42,21 @@ class UCBVI_PRM:
         self.N_oaz[self.observations_buffer[0][-2], self.observations_buffer[1][-1], self.observations_buffer[0][-1]] += 1
         self.N_h[self.observations_buffer[3][-1], self.observations_buffer[0][-1]] += 1
         self.N[self.observations_buffer[0][-2], self.observations_buffer[1][-1]] += 1
+        if self.doubling_trick:
+            if np.log2(self.N[self.observations_buffer[0][-2], self.observations_buffer[1][-1]]).is_integer():
+                self.update_transition_prob_obs()
+                self.update_transition_prob_state()
+                self.update_rewards()
+                self.update_Q()
 
     def learn(self):
-        self.update_transition_prob_obs()
-        self.update_transition_prob_state()
-        self.update_rewards()
-        self.update_Q()
+        if self.doubling_trick is False:
+            self.update_transition_prob_obs()
+            self.update_transition_prob_state()
+            self.update_rewards()
+            self.update_Q()
+        else:
+            pass
 
     def bonus(self, h, q, o, a, V):
         T = self.K * self.epi_len
@@ -57,21 +66,16 @@ class UCBVI_PRM:
         for z in range(self.nO):
             if h < self.epi_len-1 and self.N_h[h+1, z] > 0:
                 regret_state = 10000 * (self.epi_len**3) * (self.nO**2) * self.nA * (L**2) / self.N_h[h+1, z]
-                if regret_state < self.epi_len**2:
-                    # print("debug")
-                    pass
                 temp += self.p[o, a, z] * min(self.epi_len**2, regret_state)
             else:
                 temp += self.p[o, a, z] * self.epi_len**2
 
-        bonus = np.sqrt(8*L*var_W/self.N[o, a]) + 14*self.epi_len/(3*self.N[o, a]) + np.sqrt(8*temp/self.N[o, a]) + np.sqrt(2*L/self.N[o, a])
-        # if bonus < 1:
-            # print("debug")
+        bonus = np.sqrt(8*L*var_W/self.N[o, a]) + 14*self.epi_len*L/(3*self.N[o, a]) + np.sqrt(8*temp/self.N[o, a]) + np.sqrt(2*L/self.N[o, a])
         return bonus
 
     def calculate_var_W(self, V, h, q, o, a):
         # calculate W_h
-        W_h = np.zeros(self.nO)
+        W_h = np.zeros(self.nO, dtype=np.float64)
         for z in range(self.nO):
             event = self.RM.events[o, a, z]
             if event is not None:

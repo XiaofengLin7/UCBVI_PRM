@@ -31,9 +31,9 @@ def run_exp(epi_len, num_epi, num_states, num_exp, test_name="river_swim_patrol"
         init_o = env.to_s([(int)(env.sizeX / 2), (int)(env.sizeY / 2)])
         print(f"Built two room MDP with {env.sizeX} x {env.sizeY} gridworld.")
     elif test_name == "warehouse":
-        env, n_states, n_actions = buildWarehouse_PRM(num_states, num_states, epi_len, map_name="two_room")
+        env, n_states, n_actions = buildWarehouse_PRM(num_states, num_states, epi_len, map_name="warehouse")
         init_q = 0
-        init_o = env.to_s([1, 1])
+        init_o = env.to_s([0, 0])
         print(f"Built warehouse with {env.sizeX} x {env.sizeY} gridworld.")
     elif test_name == "river_swim_patrol_prm":
         env, n_states, n_actions = buildRiverSwim_patrol2_PRM(nbStates=num_states, rightProbaright=0.6,
@@ -57,9 +57,9 @@ def run_exp(epi_len, num_epi, num_states, num_exp, test_name="river_swim_patrol"
     result_2 = [[] for _ in range(num_exp)]
     optimal_res = [[] for _ in range(num_exp)]
 
-    learner_1 = UCBVI_PRM(n_states, n_actions, epi_len, delta=0.05, K=num_epi, RM=env.rewardMachine)
+    learner_1 = UCBVI_PRM(n_states, n_actions, epi_len, delta=0.2, K=num_epi, RM=env.rewardMachine)
     # learner_2 = UCRL2_RM(n_states, n_actions, epi_len, delta=0.05, K=num_epi, RM=env.rewardMachine)
-    learner_2 = UCBVI_CP(env.rewardMachine.n_states, n_states, n_actions, epi_len, delta=0.05, K=num_epi, rm_rewards=env.rewardMachine.rewards)
+    learner_2 = UCBVI_CP(env.rewardMachine.n_states, n_states, n_actions, epi_len, delta=0.2, K=num_epi, rm_rewards=env.rewardMachine.rewards)
     optimal_learner = Optimal_Player(env, K=num_epi)
     V_star = env.V_star[0, init_q, init_o]
 
@@ -109,15 +109,15 @@ def data_collect(env, learner_1, learner_2, optimal_learner, epi_len, i):
 
 if __name__ == "__main__":
     np.random.seed(None)
-    epi_len = 5
-    num_epi = 120000  # K
-    num_states = 3
+    epi_len = 10
+    num_epi = 10000  # K
+    num_states = 4
     num_exp = 8
     # test_name = "river_swim_patrol"
     # test_name = "flower"
     # test_name = "two_room_2corners"
-    # test_name = "warehouse"
-    test_name = "river_swim_patrol_prm"
+    test_name = "warehouse"
+    # test_name = "river_swim_patrol_prm"
     run_exp(epi_len, num_epi, num_states, num_exp, test_name=test_name)
     data_visualization = True
     visual_range = (0, num_epi)
