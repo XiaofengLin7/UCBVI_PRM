@@ -2,7 +2,26 @@ from learners.UCRL_RM import UCRL2_RM
 import numpy as np
 class UCRL2_RM_Bernstein(UCRL2_RM):
     def __init__(self, nO, nA, epi_len, K, RM, delta):
-        super().__init__(nO, nA, epi_len, K, RM, delta)
+        self.nO = nO
+        self.nA = nA
+        self.epi_len = epi_len
+        self.K = K
+        self.RM = RM
+        self.nQ = RM.n_states
+        self.t = 1
+        # self.distance_scale = distance_scale
+        self.delta = delta
+        self.observations = [[], [], []]
+        self.vk = np.zeros((self.nO, self.nA))
+        self.Nk = np.zeros((self.nO, self.nA))
+        self.Pk = np.zeros((self.nO, self.nA, self.nO))
+
+        self.policy = np.zeros((self.epi_len, self.nQ, self.nO,), dtype=int)
+        self.p_distances = np.zeros((self.nO, self.nA, self.nO, 2))
+
+        # initial state
+        self.init_q = RM.init
+        self.init_o = 0
     def name(self):
         return "UCRL2_RM_Bernstein"
 
@@ -36,11 +55,11 @@ class UCRL2_RM_Bernstein(UCRL2_RM):
         return (up + down) / 2
 
     def distances(self, p_estimate):
-        delta = self.delta / (2 * self.nS * self.nA)
-        for s in range(self.nS):
+        delta = self.delta / (2 * self.nO * self.nA)
+        for s in range(self.nO):
             for a in range(self.nA):
                 n = max(1, self.Nk[s, a])
-                for next_s in range(self.nS):
+                for next_s in range(self.nO):
                     p = p_estimate[s, a, next_s]
                     beta = self.beta(n, delta)
                     bound_max = np.sqrt(beta / (2 * n)) + beta / (3 * n)
@@ -50,14 +69,14 @@ class UCRL2_RM_Bernstein(UCRL2_RM):
                     self.p_distances[s, a, next_s, 1] = upper_bound
 
     def max_proba(self, p_estimate, sorted_indices, s, a, epsilon=10 ** (-8), reverse=False):
-        max_p = np.zeros(self.nS)
+        max_p = np.zeros(self.nO)
         delta = 1.
-        for next_s in range(self.nS):
+        for next_s in range(self.nO):
             max_p[next_s] = max((0, p_estimate[s, a, next_s] - self.p_distances[s, a, next_s, 0]))
             delta += - max_p[next_s]
         l = 0
-        while (delta > 0) and (l <= self.nS - 1):
-            idx = self.nS - 1 - l if not reverse else l
+        while (delta > 0) and (l <= self.nO - 1):
+            idx = self.nO - 1 - l if not reverse else l
             idx = sorted_indices[idx]
             new_delta = min((delta, p_estimate[s, a, idx] + self.p_distances[s, a, idx, 1] - max_p[idx]))
             max_p[idx] += new_delta
@@ -66,12 +85,12 @@ class UCRL2_RM_Bernstein(UCRL2_RM):
         return max_p
     def new_episode(self):
         self.updateN()  # Don't run it after the reinitialization of self.vk
-        self.vk = np.zeros((self.nS, self.nA))
-        p_estimate = np.zeros((self.nS, self.nA, self.nS))
-        for s in range(self.nS):
+        self.vk = np.zeros((self.nO, self.nA))
+        p_estimate = np.zeros((self.nO, self.nA, self.nO))
+        for s in range(self.nO):
             for a in range(self.nA):
                 div = max([1, self.Nk[s, a]])
-                for next_s in range(self.nS):
+                for next_s in range(self.nO):
                     p_estimate[s, a, next_s] = self.Pk[s, a, next_s] / div
         self.distances(p_estimate)
         self.EVI(p_estimate)

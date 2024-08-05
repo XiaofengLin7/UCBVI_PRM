@@ -3,15 +3,15 @@ from utils import calculate_variance
 import math
 
 class UCBVI_CP():
-    def __init__(self, nQ, nO, nA, epi_len, delta, K, rm_rewards):
+    def __init__(self, nQ, nO, nA, epi_len, delta, K, rm_rewards, bonus_scale=0.01):
         self.nQ = nQ
         self.nO = nO
         self.nA = nA
         self.epi_len = epi_len
         self.delta = delta
         self.K = K
-
-        self.Q = np.zeros((epi_len, self.nQ, nO, nA))
+        self.bonus_scale = bonus_scale
+        self.Q = np.ones((epi_len, self.nQ, nO, nA))*self.epi_len
         self.P = np.zeros((self.nQ, nO, nA, self.nQ, nO))
         self.R = np.zeros((self.nQ, nO, nA))
 
@@ -102,7 +102,7 @@ class UCBVI_CP():
                     for a in range(self.nA):
                         if self.N[q, o, a] > 0:
                             PV = np.sum(self.P[q, o, a, :, :]*V[h+1, :, :])
-                            bonus = self.bonus(h, q, o, a, V)
+                            bonus = self.bonus(h, q, o, a, V)*self.bonus_scale
                             self.Q[h, q, o, a] = min(min(self.Q[h, q, o, a], self.epi_len),
                                                      self.R[q, o, a] + PV + bonus)
                         else:

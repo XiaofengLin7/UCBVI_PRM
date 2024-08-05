@@ -70,7 +70,7 @@ class GridWorld(DiscreteMDP):
                         [0., slip, 1. - 3 * slip, slip, slip],  # right
                         [0., 0., 0., 0., 1]]                    # stay
         self.P = self.makeTransition()
-        self.isd = self.makeInitialDistribution(self.maze, [1, 1])
+        self.isd = self.makeInitialDistribution(self.maze, [0, 0])
         self.R = np.zeros((self.nS, self.nA))
 
         super(GridWorld, self).__init__(self.nS, self.nA, self.P, self.R, self.isd, self.nameActions)

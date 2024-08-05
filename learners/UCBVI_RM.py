@@ -1,24 +1,25 @@
 import numpy as np
 from utils import calculate_variance
 import pdb
+import math
 
 
 class UCBVI_PRM:
-    def __init__(self, nO, nA, epi_len, delta, K, RM):
+    def __init__(self, nO, nA, epi_len, delta, K, RM, bonus_scale=0.01):
         self.nO = nO
         self.nA = nA
         self.epi_len = epi_len
         self.p = np.zeros((nO, nA, nO))
         self.delta = delta
         self.K = K
-
+        self.bonus_scale = bonus_scale
         self.N_oaz = np.zeros((nO, nA, nO))
         self.N = np.zeros((nO, nA))
         self.N_h = np.zeros((epi_len, nO))
         self.observations_buffer = [[], [], [], []]
         self.RM = RM
         self.nQ = RM.n_states
-        self.Q = np.zeros((epi_len, self.nQ, nO, nA))
+        self.Q = np.ones((epi_len, self.nQ, nO, nA))*self.epi_len
         self.P = np.zeros((self.nQ, nO, nA, self.nQ, nO))
         self.R = np.zeros((self.nQ, nO, nA))
         self.policy = np.zeros((self.epi_len, self.nQ, self.nO,), dtype=int)
@@ -43,7 +44,7 @@ class UCBVI_PRM:
         self.N_h[self.observations_buffer[3][-1], self.observations_buffer[0][-1]] += 1
         self.N[self.observations_buffer[0][-2], self.observations_buffer[1][-1]] += 1
         if self.doubling_trick:
-            if np.log2(self.N[self.observations_buffer[0][-2], self.observations_buffer[1][-1]]).is_integer():
+            if math.log2(self.N[self.observations_buffer[0][-2], self.observations_buffer[1][-1]]).is_integer():
                 self.update_transition_prob_obs()
                 self.update_transition_prob_state()
                 self.update_rewards()
@@ -59,18 +60,40 @@ class UCBVI_PRM:
             pass
 
     def bonus(self, h, q, o, a, V):
-        T = self.K * self.epi_len
-        L = np.log(6*self.nO*self.nA*T/self.delta)
-        var_W = self.calculate_var_W(V, h+1, q, o, a)
-        temp = 0.0
-        for z in range(self.nO):
-            if h < self.epi_len-1 and self.N_h[h+1, z] > 0:
-                regret_state = 10000 * (self.epi_len**3) * (self.nO**2) * self.nA * (L**2) / self.N_h[h+1, z]
-                temp += self.p[o, a, z] * min(self.epi_len**2, regret_state)
-            else:
-                temp += self.p[o, a, z] * self.epi_len**2
+        # T = self.K * self.epi_len
+        # L = np.log(6*self.nO*self.nA*T/self.delta)
+        # var_W = self.calculate_var_W(V, h+1, q, o, a)
 
-        bonus = np.sqrt(8*L*var_W/self.N[o, a]) + 14*self.epi_len*L/(3*self.N[o, a]) + np.sqrt(8*temp/self.N[o, a]) + np.sqrt(2*L/self.N[o, a])
+
+        T = self.K * self.epi_len
+        L = np.log(6 * self.nO * self.nA * T / self.delta)
+        var_W = self.calculate_var_W(V, h + 1, q, o, a)
+
+        # Precompute some repetitive terms
+        sqrt_L = np.sqrt(L)
+        sqrt_8L = np.sqrt(8 * L)
+        epi_len_sq = self.epi_len ** 2
+        epi_len_cube = self.epi_len ** 3
+        const_regret = 10000 * epi_len_cube * (self.nO ** 2) * self.nA * (L ** 2)
+
+        temp = 0.0
+        if h < self.epi_len - 1:
+            valid_indices = self.N_h[h + 1, :] > 0
+            regret_state = np.ones(self.nO)*epi_len_sq
+            regret_state[valid_indices] = const_regret / self.N_h[h + 1, valid_indices]
+            regret_state = np.minimum(epi_len_sq, regret_state)
+            temp += np.dot(self.p[o, a, :], regret_state)
+            # temp += np.dot(self.p[o, a, ~valid_indices], epi_len_sq)
+        else:
+            temp += epi_len_sq
+        N_oa = self.N[o, a]
+        bonus = (
+                sqrt_8L * np.sqrt(var_W / N_oa)
+                + 14 * self.epi_len * L / (3 * N_oa)
+                + np.sqrt(8 * temp / N_oa)
+                + np.sqrt(2 * L / N_oa)
+        )
+        # bonus = np.sqrt(8*L*var_W/self.N[o, a]) + 14*self.epi_len*L/(3*self.N[o, a]) + np.sqrt(8*temp/self.N[o, a]) + np.sqrt(2*L/self.N[o, a])
         return bonus
 
     def calculate_var_W(self, V, h, q, o, a):
@@ -135,7 +158,8 @@ class UCBVI_PRM:
                 for o in range(self.nO):
                     for a in range(self.nA):
                         if self.N[o, a] > 0:
-                            bonus = self.bonus(h, q, o, a, V)*1
+                            bonus = self.bonus(h, q, o, a, V)*self.bonus_scale
+                            # print("Time for bonus: ", time.time() - str_time)
                             PV = np.sum(self.P[q, o, a, :, :] * V[h+1, :, :])
                             self.Q[h, q, o, a] = min(min(self.Q[h, q, o, a], self.epi_len), self.R[q, o, a] + PV + bonus)
                         else:
@@ -157,8 +181,8 @@ class UCBVI_PRM:
 
 
 class UCBVI_RM(UCBVI_PRM):
-    def __init__(self, nO, nA, epi_len, delta, K, RM):
-        super(UCBVI_RM, self).__init__(nO, nA, epi_len, delta, K, RM)
+    def __init__(self, nO, nA, epi_len, delta, K, RM, bonus_scale=0.01):
+        super(UCBVI_RM, self).__init__(nO, nA, epi_len, delta, K, RM, bonus_scale)
 
     def name(self):
         return 'UCBVI_RM'

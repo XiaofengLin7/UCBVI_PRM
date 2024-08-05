@@ -379,6 +379,7 @@ class RM_GridWorld(GridWorld):
         self.sizeX, self.sizeY = sizeX, sizeY
         self.nA = 4
         self.epi_len = epi_len
+        self.map_name = map_name
         # construct maze
         if sizeX <= 3 or sizeY <= 3:
             raise ValueError("Not valid size of grid world, length and width must be greater than 3.")
@@ -406,7 +407,7 @@ class RM_GridWorld(GridWorld):
 
         # self.nS = len(self.mapping)
         self.nS = sizeX * sizeY
-        self.isd = self.makeInitialDistribution(self.maze)
+        self.isd = self.makeInitialDistribution(self.maze,[1, 1])
         self.P = self.makeTransition()
         if map_name == "two_room_2corners":
             e, t, r = RM_tworoom_2corners(sizeX, sizeY)
@@ -513,6 +514,7 @@ def PRM_warehouse(sizeX, sizeY):
 
 class Warehouse_PRM(GridWorld):
     def __init__(self, sizeX, sizeY, epi_len, map_name, slippery=0.1):
+        self.slippery = slippery
         e, t, r = PRM_warehouse(sizeX, sizeY)
         self.rewardMachine = ProbabilisticRewardMachine(e, t, r)
         super(Warehouse_PRM, self).__init__(sizeX, sizeY, map_name, slippery)
@@ -579,8 +581,8 @@ def PRM_riverSwim_patrol2(S):
         events[S - 2, a, S-1] = 1
     transitions = np.zeros(shape=(2, 2, 2), dtype=np.float64)
     transitions[0, 0, 0] = 1
-    transitions[0, 1, 0] = 0.1 # 10% the transition is not successful
-    transitions[0, 1, 1] = 0.9 # 90% the transition is successful
+    transitions[0, 1, 0] = 0.2 # 10% the transition is not successful
+    transitions[0, 1, 1] = 0.8 # 90% the transition is successful
     transitions[1, 0, 0] = 1
     transitions[1, 1, 1] = 1
 

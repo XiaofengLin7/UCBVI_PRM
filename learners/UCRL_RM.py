@@ -3,7 +3,7 @@ import pdb
 import numpy as np
 import copy as cp
 class UCRL2_RM:
-    def __init__(self, nO, nA, epi_len, K, RM, delta):
+    def __init__(self, nO, nA, epi_len, K, RM, delta, distance_scale=1):
         self.nO = nO
         self.nA = nA
         self.epi_len = epi_len
@@ -11,7 +11,7 @@ class UCRL2_RM:
         self.RM = RM
         self.nQ = RM.n_states
         self.t = 1
-
+        self.distance_scale = distance_scale
         self.delta = delta
         self.observations = [[], [], []]
         self.vk = np.zeros((self.nO, self.nA))
@@ -28,7 +28,7 @@ class UCRL2_RM:
         #np.random.seed(42)
 
     def name(self):
-        return "UCRL2_RM"
+        return "UCRL2_RM_L1"
 
     def reset(self, init_o = 0):
         self.observations = [[init_o], [], []]
@@ -69,7 +69,7 @@ class UCRL2_RM:
         for o in range(self.nO):
             for a in range(self.nA):
                 n = max(1, self.Nk[o, a])
-                self.p_distances[o, a] = np.sqrt(
+                self.p_distances[o, a] = self.distance_scale*np.sqrt(
                     (2 * (1 + 1 / n) * np.log(np.sqrt(n + 1) * (2 ** (self.nO) - 2) / d)) / n)
 
     def sorted_indices(self, u0, h, cur_q, cur_o, a):

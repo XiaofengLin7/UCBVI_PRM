@@ -4,7 +4,7 @@ import gym
 from gym.envs.registration import register
 from tqdm import tqdm
 import pdb
-
+import time
 
 def categorical_sample(prob_n, np_random):
     """
@@ -165,16 +165,12 @@ def cumulative_rewards_v1(env, learner, len_horizon):
         learner.reset(observation)
         cur_epi_rewards = []
         cur_epi_cum_rewards = 0.0
+
         for t in range(len_horizon):
             cur_obs = observation
             cur_Q = env.rewardMachine.current_state
-            state = (cur_Q, cur_obs)
             action = learner.play(t, cur_Q, cur_obs)
-            # if cur_obs == 0 and action == 0:
-            #     print("debug")
-            observation, reward, done, info = env.step(action)
-            # if reward == 1:
-            #     print("debug")
+            observation, reward, _, _ = env.step(action)
             cur_Q = env.rewardMachine.current_state
             learner.update(cur_Q, action, reward, observation, t)
             cur_epi_cum_rewards += reward
@@ -184,7 +180,6 @@ def cumulative_rewards_v1(env, learner, len_horizon):
         # print("Episode {}: cumulative reward is {}".format(k+1, cur_epi_cum_rewards))
         cumulative_rewards.append(cur_epi_rewards)
         # learner.learn()
-
     return cumulative_rewards
 
 
@@ -214,6 +209,14 @@ def cumulative_rewards_v2(env, learner, len_horizon):
     # pdb.set_trace()
     return cumulative_rewards
 
+def mean_of_every_interval(array, interval):
+    # Split the array into chunks of 10
+    chunks = [array[i:i + interval] for i in range(0, len(array), interval)]
+
+    # Calculate the mean of each chunk
+    means = [np.mean(chunk) for chunk in chunks]
+
+    return np.array(means)
 
 if __name__ == '__main__':
     generator, seed = seeding.np_random(42)
