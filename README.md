@@ -2,7 +2,7 @@
 ## Introduction
 This repository holds the implementation codes for the simulation scenarios in the paper. 
 
-Paper Name: Efficient Reinforcement Learning in Probabilistic Reward Machines
+Paper Name: [Efficient Reinforcement Learning in Probabilistic Reward Machines](https://arxiv.org/abs/2408.10381), AAAI 2025.
 ## Getting started
 **Create virtual environment**
 ```
@@ -12,7 +12,7 @@ conda activate UCBVI-PRM
 **Installing packages:**
 Navigate to this repo's directory
 ```
-conda install --yes --file requirements.txt
+pip install -r requirements.txt
 ```
 ## Run experiments
 ```
@@ -52,7 +52,7 @@ There are four type of learners that can be used in DRM: UCBVI-RM, UCBVI-CP, UCR
 
 ```
 ### PRM
-There are three test environment for DRM:
+There are two test environment for DRM:
   - warehouse
   - river_swim_patrol_prm
 
