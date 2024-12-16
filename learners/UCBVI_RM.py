@@ -24,9 +24,10 @@ class UCBVI_PRM:
         self.R = np.zeros((self.nQ, nO, nA))
         self.policy = np.zeros((self.epi_len, self.nQ, self.nO,), dtype=int)
         self.doubling_trick = True
+        self.params = bonus_scale
         #np.random.seed(42)
     def name(self):
-        return 'UCBVI_PRM'
+        return 'UCBVI-PRM'
 
     def reset(self, initial_obs):
         self.observations_buffer = [[initial_obs], [], [], [0]]
@@ -60,11 +61,6 @@ class UCBVI_PRM:
             pass
 
     def bonus(self, h, q, o, a, V):
-        # T = self.K * self.epi_len
-        # L = np.log(6*self.nO*self.nA*T/self.delta)
-        # var_W = self.calculate_var_W(V, h+1, q, o, a)
-
-
         T = self.K * self.epi_len
         L = np.log(6 * self.nO * self.nA * T / self.delta)
         var_W = self.calculate_var_W(V, h + 1, q, o, a)
@@ -185,7 +181,7 @@ class UCBVI_RM(UCBVI_PRM):
         super(UCBVI_RM, self).__init__(nO, nA, epi_len, delta, K, RM, bonus_scale)
 
     def name(self):
-        return 'UCBVI_RM'
+        return 'UCBVI-PRM'
     def update_transition_prob_state(self):
         for q in range(self.nQ):
             for o in range(self.nO):

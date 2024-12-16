@@ -5,6 +5,7 @@ from gym.envs.registration import register
 from tqdm import tqdm
 import pdb
 import time
+from matplotlib import pyplot as plt
 
 def categorical_sample(prob_n, np_random):
     """
@@ -181,33 +182,62 @@ def cumulative_rewards_v1(env, learner, len_horizon):
         cumulative_rewards.append(cur_epi_rewards)
         # learner.learn()
     return cumulative_rewards
+def plot_results(all_cumu_rewards, learners, V_star, test_description):
+    color_set = ['r', 'g', 'b', 'c', 'm', 'y', 'k']
+    # color_set = ['r','m', 'y','g', 'b', 'c',  'k']
+    num_learners = len(learners)
+    num_epi = all_cumu_rewards.shape[2]
+    visual_range = (0, num_epi)
+    mean_cumu_rewards = []
+    std = []
+    for i in range(num_learners):
+        mean_cumu_reward, std_ = calculate_cumu_reward_mean_std(all_cumu_rewards[i])
+        mean_cumu_rewards.append(mean_cumu_reward)
+        std.append(std_)
+    # plot the results
+    k = np.arange(num_epi)
+    regrets = []
+    plt.rcParams.update({'font.size': 20})
+    for i in range(num_learners):
+        regret = -mean_cumu_rewards[i] + (k + 1) * V_star
+        regrets.append(regret)
+    plt.figure(1, figsize=(6.4, 4.8))
+    for i in range(num_learners):
+        plt.plot(k, regrets[i], marker='.', color=color_set[i], label=learners[i].name())
+        plt.fill_between(k, regrets[i] - std[i], regrets[i] + std[i], color=color_set[i], alpha=0.2)
+    plt.ylabel('Regret')
+    plt.xlabel('Episodes')
+    #plt.ylim((-50,1700))
+    #plt.yticks(np.arange(0, 1501, 250))
+    plt.xlim(visual_range)
+    # plt.title(test_description)
+    # plt.ylim(0, 150)
+    plt.grid(True)
+    plt.legend(loc='upper left')
+    plt.savefig('results/' + test_description + '_regret.pdf',  bbox_inches='tight')
 
+    interval = 200
+    mean_reward_per_episode = []
 
-def cumulative_rewards_v2(env, learner, len_horizon):
-    """
-    util functions specifically for UCRL2 type of learning algorithms
-    """
-    cumulative_rewards = []
-    for k in tqdm(range(learner.K)):
-        observation = env.reset()
-        learner.reset(observation)
-        cur_epi_rewards = []
-        cur_epi_cum_rewards = 0.0
-        for t in range(len_horizon):
-            cur_obs = observation
-            cur_Q = env.rewardMachine.current_state
-            state = (cur_Q, cur_obs)
-            action = learner.play(t, cur_Q, cur_obs)
+    for i in range(num_learners):
+        mean_reward_per_episode_i = mean_cumu_rewards[i]
+        mean_reward_per_episode_i[1:] = mean_cumu_rewards[i][1:] - mean_cumu_rewards[i][:-1]
+        mean_reward_per_episode_i = mean_of_every_interval(mean_reward_per_episode_i, interval)
+        mean_reward_per_episode.append(mean_reward_per_episode_i)
 
-            observation, reward, done, info = env.step(action)
-            learner.update(cur_Q, action, reward, observation, t)
-            cur_epi_cum_rewards += reward
-            cur_epi_rewards.append(cur_epi_cum_rewards)
-
-        cumulative_rewards.append(cur_epi_rewards)
-
-    # pdb.set_trace()
-    return cumulative_rewards
+    plt.figure(2)
+    k = np.arange(num_epi / interval)
+    for i in range(num_learners):
+        plt.plot(k * interval, mean_reward_per_episode[i], marker='.', color=color_set[i], label=learners[i].name())
+    plt.plot(k * interval, V_star * np.ones((int)(num_epi / interval)), marker='.', color=color_set[-1], label='V*')
+    plt.legend(loc='best')
+    plt.xlim(visual_range)
+    plt.ylabel('Empirical return per episode')
+    plt.xlabel('Episodes')
+    # plt.title(test_description)
+    plt.savefig('results/' + test_description + '_average_cumulative_reward.pdf')
+    plt.show()
+    print("plotting completes")
 
 def mean_of_every_interval(array, interval):
     # Split the array into chunks of 10

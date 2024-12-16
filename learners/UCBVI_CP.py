@@ -25,7 +25,7 @@ class UCBVI_CP():
         self.doubling_trick = True
         np.random.seed(42)
     def name(self):
-        return "UCBVI_CP"
+        return "UCBVI-CP"
 
     def reset(self, initial_obs):
         self.observations_buffer = [[self.initial_q], [initial_obs],[],[],[0]]

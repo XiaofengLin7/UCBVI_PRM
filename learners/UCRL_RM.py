@@ -24,11 +24,11 @@ class UCRL2_RM:
         # initial state
         self.init_q = RM.init
         self.init_o = 0
-
+        self.params = distance_scale
         #np.random.seed(42)
 
     def name(self):
-        return "UCRL2_RM_L1"
+        return "UCRL2-RM-L"
 
     def reset(self, init_o = 0):
         self.observations = [[init_o], [], []]

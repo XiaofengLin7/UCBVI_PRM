@@ -1,7 +1,7 @@
 from learners.UCRL_RM import UCRL2_RM
 import numpy as np
 class UCRL2_RM_Bernstein(UCRL2_RM):
-    def __init__(self, nO, nA, epi_len, K, RM, delta):
+    def __init__(self, nO, nA, epi_len, K, RM, delta, distance_scale):
         self.nO = nO
         self.nA = nA
         self.epi_len = epi_len
@@ -9,7 +9,7 @@ class UCRL2_RM_Bernstein(UCRL2_RM):
         self.RM = RM
         self.nQ = RM.n_states
         self.t = 1
-        # self.distance_scale = distance_scale
+        self.distance_scale = distance_scale
         self.delta = delta
         self.observations = [[], [], []]
         self.vk = np.zeros((self.nO, self.nA))
@@ -22,8 +22,9 @@ class UCRL2_RM_Bernstein(UCRL2_RM):
         # initial state
         self.init_q = RM.init
         self.init_o = 0
+        self.params = distance_scale
     def name(self):
-        return "UCRL2_RM_Bernstein"
+        return "UCRL2-RM-B"
 
     def beta(self, n, delta):
         eta = 1.12
@@ -31,11 +32,12 @@ class UCRL2_RM_Bernstein(UCRL2_RM):
         return temp
 
     def upper_bound(self, n, p_est, bound_max, beta):
-        up = p_est + bound_max
+        up = min(p_est + bound_max*self.distance_scale, 1)
         down = p_est
         for _ in range(5):
             m = (up + down) / 2
-            temp = np.sqrt(2 * beta * m * (1 - m) / n) + beta / (3 * n)
+            # m = min(1, m)
+            temp = self.distance_scale*(np.sqrt(2 * beta * m * (1 - m) / n) + beta / (3 * n))
             if m - temp <= p_est:
                 down = m
             else:
@@ -43,11 +45,12 @@ class UCRL2_RM_Bernstein(UCRL2_RM):
         return (up + down) / 2
 
     def lower_bound(self, n, p_est, bound_max, beta):
-        down = p_est - bound_max
+        down = max(p_est - bound_max*self.distance_scale, 0)
         up = p_est
         for _ in range(5):
             m = (up + down) / 2
-            temp = np.sqrt(2 * beta * m * (1 - m) / n) + beta / (3 * n)
+            # m = max(0, m)
+            temp = self.distance_scale*(np.sqrt(2 * beta * m * (1 - m) / n) + beta / (3 * n))
             if m + temp >= p_est:
                 up = m
             else:
